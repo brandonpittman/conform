@@ -1,0 +1,25 @@
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+		'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+		sans-serif;
+}
+
+fieldset {
+	box-sizing: border-box;
+	padding: 1rem;
+	background-color: hsl(0, 0%, 100%);
+	border: 1px solid hsl(0, 0%, 90%);
+}
+
+input:invalid {
+	border: 1px solid red;
+	border-color: red;
+	outline-color: red;
+}
+
+strong {
+	display: block;
+	font-weight: normal;
+	color: red;
+	margin-bottom: 0.5rem;
+}
