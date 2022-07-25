@@ -385,3 +385,116 @@ export function getFieldElements(
 
 	return nodes.filter(isFieldElement);
 }
+
+export function registerFieldset<T extends Record<string, unknown>>(
+	fieldset: HTMLFieldSetElement,
+	schema: Schema<T>,
+) {
+	if (!fieldset?.form) {
+		console.warn(
+			'No form element is linked to the fieldset; Do you forgot setting the form attribute?',
+		);
+	}
+
+	const validateFieldset = () => {
+		schema.validate?.(fieldset);
+
+		for (const element of fieldset.elements) {
+			if (
+				isFieldElement(element) &&
+				element.dataset.conformError &&
+				element.validationMessage !== element.dataset.conformError
+			) {
+				delete element.dataset.conformError;
+			}
+		}
+	};
+
+	const resetFieldset = (e: Event) => {
+		if (e.target !== fieldset.form) {
+			return;
+		}
+
+		for (const element of fieldset.elements) {
+			if (isFieldElement(element)) {
+				delete element.dataset.conformError;
+			}
+		}
+
+		// Revalidate the fieldset
+		schema.validate?.(fieldset);
+	};
+
+	validateFieldset();
+
+	document.addEventListener('input', validateFieldset);
+	document.addEventListener('reset', resetFieldset);
+
+	return () => {
+		document.removeEventListener('input', validateFieldset);
+		document.removeEventListener('reset', resetFieldset);
+	};
+}
+
+export function watchFieldset(
+	fieldset: HTMLFieldSetElement,
+	initialReport: 'onSubmit' | 'onBlur' | 'onChange' = 'onSubmit',
+) {
+	const inputHandler = (event: Event) => {
+		console.log('report input');
+
+		if (
+			!isFieldElement(event.target) ||
+			event.target?.form !== fieldset?.form
+		) {
+			return;
+		}
+
+		if (initialReport === 'onChange') {
+			setFieldState(event.target, { touched: true });
+		}
+
+		reportValidity(fieldset);
+	};
+	const focusoutHandler = (event: FocusEvent) => {
+		if (
+			!isFieldElement(event.target) ||
+			event.target?.form !== fieldset?.form
+		) {
+			return;
+		}
+
+		if (initialReport === 'onBlur') {
+			setFieldState(event.target, { touched: true });
+		}
+
+		reportValidity(fieldset);
+	};
+	const clickHandler = (event: MouseEvent) => {
+		if (
+			!isFieldElement(event.target) ||
+			event.target?.form !== fieldset?.form
+		) {
+			return;
+		}
+
+		if (event.target.type === 'submit') {
+			setFieldState(event.target.form, { touched: true });
+		}
+	};
+	const handleReset = (event: Event) => {
+		setFieldState(event.currentTarget, { touched: false });
+	};
+
+	document.addEventListener('input', inputHandler);
+	document.addEventListener('focusout', focusoutHandler);
+	document.addEventListener('click', clickHandler);
+	document.addEventListener('reset', handleReset);
+
+	return () => {
+		document.removeEventListener('input', inputHandler);
+		document.removeEventListener('focusout', focusoutHandler);
+		document.removeEventListener('click', clickHandler);
+		document.removeEventListener('reset', handleReset);
+	};
+}
