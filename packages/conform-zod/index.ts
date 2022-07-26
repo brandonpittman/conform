@@ -1,13 +1,13 @@
 import {
 	type Constraint,
-	type FieldsetElement,
 	type Schema,
 	type Submission,
 	type FieldsetData,
 	parse as baseParse,
 	transform,
 	getName,
-	getFieldElements,
+	getFieldsetData,
+	isFieldsetField,
 } from '@conform-to/dom';
 import * as z from 'zod';
 
@@ -232,33 +232,21 @@ export function resolve<T extends Record<string, any>>(
 				inferConstraint(def),
 			]),
 		),
-		validate(fieldset: FieldsetElement) {
-			const formData = new FormData(fieldset.form);
-			const entries = Array.from(formData.entries()).reduce<
-				Array<[string, string]>
-			>((result, [key, value]) => {
-				if (!fieldset.name || key.startsWith(`${fieldset.name}.`)) {
-					result.push([
-						key.slice(fieldset.name ? fieldset.name.length + 1 : 0),
-						value.toString(),
-					]);
-				}
-
-				return result;
-			}, []);
-			const data = transform(entries);
+		validate(fieldset: HTMLFieldSetElement) {
+			const data = getFieldsetData(fieldset);
 			const value = parse(data);
 			const result = schema.safeParse(value);
 			const errors = !result.success ? result.error.errors : [];
+			const keys = Object.keys(shape);
 
-			for (const key of Object.keys(shape)) {
-				const fields = getFieldElements(fieldset, key);
-				const validationMessage =
-					errors.find((e) => key === e.path[0])?.message ?? '';
-
-				for (const field of fields) {
-					field.setCustomValidity(validationMessage);
+			for (const element of fieldset.elements) {
+				if (!isFieldsetField(element, fieldset, keys)) {
+					continue;
 				}
+
+				const error = errors.find((e) => element.name === getName(e.path));
+
+				element.setCustomValidity(error?.message ?? '');
 			}
 		},
 	};

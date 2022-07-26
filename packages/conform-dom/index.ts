@@ -18,7 +18,7 @@ export interface FieldProps<Type = any> extends Constraint {
 
 export type Schema<Type extends Record<string, any>> = {
 	fields: { [Key in keyof Type]-?: Constraint };
-	validate?: (element: FieldsetElement) => void;
+	validate?: (element: HTMLFieldSetElement) => void;
 };
 
 /**
@@ -36,12 +36,6 @@ export type FieldsetData<Type, Value> = Type extends
 	: Type extends Object
 	? { [Key in keyof Type]?: FieldsetData<Type[Key], Value> }
 	: unknown;
-
-/**
- * Element that maintains a list of fields
- * i.e. fieldset.elements
- */
-export type FieldsetElement = HTMLFormElement | HTMLFieldSetElement;
 
 /**
  * Element type that might be a candiate of Constraint Validation
@@ -87,15 +81,6 @@ export interface ControlAction<T = unknown> {
 	reorder: { from: number; to: number };
 }
 
-export function isFieldsetElement(
-	element: unknown,
-): element is FieldsetElement {
-	return (
-		element instanceof Element &&
-		(element.tagName === 'FORM' || element.tagName === 'FIELDSET')
-	);
-}
-
 export function isFieldElement(element: unknown): element is FieldElement {
 	return (
 		element instanceof Element &&
@@ -104,45 +89,6 @@ export function isFieldElement(element: unknown): element is FieldElement {
 			element.tagName === 'TEXTAREA' ||
 			element.tagName === 'BUTTON')
 	);
-}
-
-export function setFieldState(
-	field: unknown,
-	state: { touched: boolean },
-): void {
-	if (isFieldsetElement(field)) {
-		for (let element of field.elements) {
-			setFieldState(element, state);
-		}
-		return;
-	}
-
-	if (!isFieldElement(field)) {
-		console.warn('Only input/select/textarea/button element can be touched');
-		return;
-	}
-
-	if (state.touched) {
-		field.dataset.touched = 'true';
-	} else {
-		delete field.dataset.touched;
-	}
-}
-
-export function reportValidity(fieldset: FieldsetElement): boolean {
-	let isValid = true;
-
-	for (const field of fieldset.elements) {
-		if (
-			isFieldElement(field) &&
-			field.dataset.touched &&
-			!field.checkValidity()
-		) {
-			isValid = false;
-		}
-	}
-
-	return isValid;
 }
 
 export function getFieldProps<Type extends Record<string, any>>(
@@ -170,18 +116,6 @@ export function getFieldProps<Type extends Record<string, any>>(
 	}
 
 	return result;
-}
-
-export function shouldSkipValidate(event: SubmitEvent): boolean {
-	if (
-		event.submitter?.tagName === 'BUTTON' ||
-		event.submitter?.tagName === 'INPUT'
-	) {
-		return (event.submitter as HTMLButtonElement | HTMLInputElement)
-			.formNoValidate;
-	}
-
-	return false;
 }
 
 export function getPaths(name?: string): Array<string | number> {
@@ -370,105 +304,104 @@ export function parse(
 	};
 }
 
-export function getFieldElements(
-	fieldset: FieldsetElement,
-	key: string,
-): FieldElement[] {
-	const name = getName([fieldset.name ?? '', key]);
-	const item = fieldset.elements.namedItem(name);
-	const nodes =
-		item instanceof RadioNodeList
-			? Array.from(item)
-			: item !== null
-			? [item]
-			: [];
+export function getFieldsetData(
+	fieldset: HTMLFieldSetElement,
+): FieldsetData<Record<string, unknown>, string> {
+	const entries: Array<[string, FormDataEntryValue]> = [];
 
-	return nodes.filter(isFieldElement);
+	if (fieldset.form) {
+		const formData = new FormData(fieldset.form);
+
+		for (const [key, value] of formData) {
+			if (!fieldset.name || key.startsWith(`${fieldset.name}.`)) {
+				entries.push([
+					key.slice(fieldset.name ? fieldset.name.length + 1 : 0),
+					value,
+				]);
+			}
+		}
+	}
+
+	return transform(entries);
 }
 
-export function registerFieldset<T extends Record<string, unknown>>(
+export function isFieldsetField(
+	element: unknown,
 	fieldset: HTMLFieldSetElement,
-	schema: Schema<T>,
+	keys: string[],
+): element is FieldElement {
+	return (
+		isFieldElement(element) &&
+		element.form === fieldset.form &&
+		keys.some((key) => element.name.startsWith(getName([fieldset.name, key])))
+	);
+}
+
+export function subscribeFieldset(
+	fieldset: HTMLFieldSetElement,
+	{ fields, validate, initialReport, error }: any,
 ) {
-	if (!fieldset?.form) {
+	if (!fieldset.form) {
 		console.warn(
 			'No form element is linked to the fieldset; Do you forgot setting the form attribute?',
 		);
 	}
 
-	const validateFieldset = () => {
-		schema.validate?.(fieldset);
+	const keys = Object.keys(fields);
+	const inputHandler = (event: Event) => {
+		if (!isFieldsetField(event.target, fieldset, keys)) {
+			return;
+		}
+
+		validate?.(fieldset);
+
+		if (initialReport === 'onChange') {
+			event.target.dataset.conformTouched = 'true';
+		}
 
 		for (const element of fieldset.elements) {
+			if (!isFieldsetField(element, fieldset, keys)) {
+				continue;
+			}
+
 			if (
-				isFieldElement(element) &&
 				element.dataset.conformError &&
 				element.validationMessage !== element.dataset.conformError
 			) {
 				delete element.dataset.conformError;
 			}
-		}
-	};
 
-	const resetFieldset = (e: Event) => {
-		if (e.target !== fieldset.form) {
-			return;
-		}
-
-		for (const element of fieldset.elements) {
-			if (isFieldElement(element)) {
-				delete element.dataset.conformError;
+			if (element.dataset.conformTouched) {
+				element.reportValidity();
 			}
 		}
-
-		// Revalidate the fieldset
-		schema.validate?.(fieldset);
 	};
-
-	validateFieldset();
-
-	document.addEventListener('input', validateFieldset);
-	document.addEventListener('reset', resetFieldset);
-
-	return () => {
-		document.removeEventListener('input', validateFieldset);
-		document.removeEventListener('reset', resetFieldset);
-	};
-}
-
-export function watchFieldset(
-	fieldset: HTMLFieldSetElement,
-	initialReport: 'onSubmit' | 'onBlur' | 'onChange' = 'onSubmit',
-) {
-	const inputHandler = (event: Event) => {
-		console.log('report input');
-
-		if (
-			!isFieldElement(event.target) ||
-			event.target?.form !== fieldset?.form
-		) {
+	const invalidHandler = (event: Event) => {
+		if (!isFieldsetField(event.target, fieldset, keys)) {
 			return;
 		}
 
-		if (initialReport === 'onChange') {
-			setFieldState(event.target, { touched: true });
-		}
-
-		reportValidity(fieldset);
+		// Disable browser report
+		event.preventDefault();
+		event.target.dataset.conformError = event.target.validationMessage;
 	};
-	const focusoutHandler = (event: FocusEvent) => {
-		if (
-			!isFieldElement(event.target) ||
-			event.target?.form !== fieldset?.form
-		) {
+	const blurHandler = (event: FocusEvent) => {
+		if (!isFieldsetField(event.target, fieldset, keys)) {
 			return;
 		}
 
 		if (initialReport === 'onBlur') {
-			setFieldState(event.target, { touched: true });
+			event.target.dataset.conformTouched = 'true';
 		}
 
-		reportValidity(fieldset);
+		for (const element of fieldset.elements) {
+			if (
+				isFieldsetField(element, fieldset, keys) &&
+				element.dataset.conformTouched
+			) {
+				element.reportValidity();
+			}
+		}
 	};
 	const clickHandler = (event: MouseEvent) => {
 		if (
@@ -479,22 +412,42 @@ export function watchFieldset(
 		}
 
 		if (event.target.type === 'submit') {
-			setFieldState(event.target.form, { touched: true });
+			for (const element of fieldset.elements) {
+				if (isFieldsetField(element, fieldset, keys)) {
+					element.dataset.conformTouched = 'true';
+				}
+			}
 		}
 	};
-	const handleReset = (event: Event) => {
-		setFieldState(event.currentTarget, { touched: false });
+	const resetHandler = (event: Event) => {
+		if (event.target !== fieldset.form) {
+			return;
+		}
+
+		for (const element of fieldset.elements) {
+			if (isFieldsetField(element, fieldset, keys)) {
+				delete element.dataset.conformError;
+				delete element.dataset.conformTouched;
+			}
+		}
+
+		// Revalidate the fieldset
+		validate?.(fieldset);
 	};
 
+	validate?.(fieldset);
+
 	document.addEventListener('input', inputHandler);
-	document.addEventListener('focusout', focusoutHandler);
+	document.addEventListener('blur', blurHandler, true);
+	document.addEventListener('invalid', invalidHandler, true);
 	document.addEventListener('click', clickHandler);
-	document.addEventListener('reset', handleReset);
+	document.addEventListener('reset', resetHandler);
 
 	return () => {
 		document.removeEventListener('input', inputHandler);
-		document.removeEventListener('focusout', focusoutHandler);
+		document.removeEventListener('blur', blurHandler, true);
+		document.removeEventListener('invalid', invalidHandler, true);
 		document.removeEventListener('click', clickHandler);
-		document.removeEventListener('reset', handleReset);
+		document.removeEventListener('reset', resetHandler);
 	};
 }

@@ -11,7 +11,7 @@ fieldset {
 	border: 1px solid hsl(0, 0%, 90%);
 }
 
-input:invalid {
+input[data-conform-touched='true']:invalid {
 	border: 1px solid red;
 	border-color: red;
 	outline-color: red;

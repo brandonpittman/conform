@@ -1,20 +1,15 @@
 import {
-	type FieldsetElement,
 	type FieldProps,
 	type Schema,
 	type FieldsetData,
 	isFieldElement,
 	getFieldProps,
 	getControlButtonProps,
-	getName,
 	applyControlCommand,
-	watchFieldset,
-	registerFieldset,
+	subscribeFieldset,
 } from '@conform-to/dom';
 import {
 	type ButtonHTMLAttributes,
-	type FormEvent,
-	type FormEventHandler,
 	type RefObject,
 	type ReactElement,
 	useRef,
@@ -39,15 +34,27 @@ interface FieldsetProps {
 	ref: RefObject<HTMLFieldSetElement>;
 	name?: string;
 	form?: string;
-	onInvalid: FormEventHandler<HTMLFieldSetElement>;
 }
 
-export function useFieldset<Type extends Record<string, any>>(
+export function useFieldset<Type extends Record<string, unknown>>(
 	schema: Schema<Type>,
 	config: FieldsetConfig<Type> = {},
 ): [FieldsetProps, { [Key in keyof Type]-?: FieldProps<Type[Key]> }] {
-	const [errorMessage, setErrorMessage] = useState<Record<string, string>>({});
+	const [errorMessage, setErrorMessage] = useState(() => {
+		let result: Record<string, string> = {};
+
+		for (let key of Object.keys(schema.fields)) {
+			const error = config.error?.[key];
+
+			if (typeof error === 'string') {
+				result[key] = error;
+			}
+		}
+
+		return result;
+	});
 	const ref = useRef<HTMLFieldSetElement>(null);
+
 	useEffect(() => {
 		const fieldset = ref.current;
 
@@ -91,12 +98,14 @@ export function useFieldset<Type extends Record<string, any>>(
 			});
 		}
 
-		const unregister = registerFieldset(fieldset, schema);
-		const unwatch = watchFieldset(fieldset, config.initialReport);
+		const unsubscribe = subscribeFieldset(fieldset, {
+			fields: schema.fields,
+			validate: schema.validate,
+			initialReport: config.initialReport,
+		});
 
 		return () => {
-			unregister();
-			unwatch();
+			unsubscribe();
 			observer.disconnect();
 		};
 	}, [schema, config.initialReport]);
@@ -116,21 +125,6 @@ export function useFieldset<Type extends Record<string, any>>(
 			ref,
 			name: config.name,
 			form: config.form,
-			onInvalid(e: FormEvent<FieldsetElement>) {
-				const element = isFieldElement(e.target) ? e.target : null;
-				const key = Object.keys(schema.fields).find(
-					(key) => element?.name === getName([e.currentTarget.name, key]),
-				);
-
-				if (!element || !key) {
-					return;
-				}
-
-				// Disable browser report
-				e.preventDefault();
-
-				element.dataset.conformError = element.validationMessage;
-			},
 		},
 		getFieldProps(schema, {
 			...config,

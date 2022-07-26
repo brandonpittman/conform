@@ -16,6 +16,9 @@ const signup = z
 export default function SignupForm() {
 	const [fieldsetProps, { email, password, confirm }] = useFieldset(
 		resolve(signup),
+		{
+			initialReport: 'onBlur',
+		},
 	);
 
 	return (
