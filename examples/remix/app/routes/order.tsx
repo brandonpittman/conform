@@ -42,10 +42,10 @@ export let action: ActionFunction = async ({ request }) => {
 
 export default function OrderForm() {
 	const submission = useActionData<Submission<z.infer<typeof order>>>();
-	const formProps = useForm({ initialReport: 'onBlur' });
 	const [fieldsetProps, { products, shipping, remarks }] = useFieldset(
 		resolve(order),
 		{
+			initialReport: 'onBlur',
 			defaultValue: submission?.form.value,
 			error: submission?.form.error,
 		},
@@ -53,7 +53,7 @@ export default function OrderForm() {
 	const [productList, control] = useFieldList(products);
 
 	return (
-		<Form method="post" {...formProps}>
+		<Form method="post">
 			<header className={styles.header}>
 				<h1>Order Form</h1>
 				{submission?.state === 'accepted' ? (
@@ -62,6 +62,7 @@ export default function OrderForm() {
 					</pre>
 				) : null}
 			</header>
+			<input type="submit" hidden />
 			<fieldset className={styles.card} {...fieldsetProps}>
 				<div className={styles.list}>
 					{productList.map((product, index) => (
