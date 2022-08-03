@@ -1,4 +1,8 @@
-import { type Schema, getFieldElements } from '@conform-to/react';
+import {
+	type FormValidate,
+	type FieldsetConstraint,
+	isFieldElement,
+} from '@conform-to/dom';
 import {
 	type Movie,
 	type LoginForm,
@@ -13,90 +17,87 @@ import { action, Form, Playground } from '~/playground';
 export { action };
 
 export default function Basic() {
-	const movieSchema: Schema<Movie> = {
-		fields: {
-			title: {
-				required: true,
-				pattern: '[0-9a-zA-Z ]{1,20}',
-			},
-			description: {
-				minLength: 30,
-				maxLength: 200,
-			},
-			genres: {
-				required: true,
-				multiple: true,
-			},
-			rating: {
-				min: '0.5',
-				max: '5',
-				step: '0.5',
-			},
+	const moveConstraint: FieldsetConstraint<Movie> = {
+		title: {
+			required: true,
+			pattern: '[0-9a-zA-Z ]{1,20}',
+		},
+		description: {
+			minLength: 30,
+			maxLength: 200,
+		},
+		genres: {
+			required: true,
+			multiple: true,
+		},
+		rating: {
+			min: '0.5',
+			max: '5',
+			step: '0.5',
 		},
 	};
-	const movieSchemaWithCustomMessage: Schema<Movie> = {
-		fields: movieSchema.fields,
-		validate(element) {
-			const [title] = getFieldElements(element, 'title');
-			const [description] = getFieldElements(element, 'description');
-			const [genres] = getFieldElements(element, 'genres');
-			const [rating] = getFieldElements(element, 'rating');
-
-			if (title.validity.valueMissing) {
-				title.setCustomValidity('Title is required');
-			} else if (title.validity.patternMismatch) {
-				title.setCustomValidity('Please enter a valid title');
-			} else {
-				title.setCustomValidity('');
+	const validateMovie: FormValidate = (form) => {
+		for (const field of form.elements) {
+			if (!isFieldElement(field)) {
+				continue;
 			}
 
-			if (description.validity.tooShort) {
-				description.setCustomValidity('Please provides more details');
-			} else {
-				description.setCustomValidity('');
+			switch (field.name) {
+				case 'title':
+					if (field.validity.valueMissing) {
+						field.setCustomValidity('Title is required');
+					} else if (field.validity.patternMismatch) {
+						field.setCustomValidity('Please enter a valid title');
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
+				case 'description':
+					if (field.validity.tooShort) {
+						field.setCustomValidity('Please provides more details');
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
+				case 'genres':
+					if (field.validity.valueMissing) {
+						field.setCustomValidity('Genre is required');
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
+				case 'rating':
+					if (field.validity.stepMismatch) {
+						field.setCustomValidity('The provided rating is invalid');
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
 			}
-
-			if (genres.validity.valueMissing) {
-				genres.setCustomValidity('Genre is required');
-			} else {
-				genres.setCustomValidity('');
-			}
-
-			if (rating.validity.stepMismatch) {
-				rating.setCustomValidity('The provided rating is invalid');
-			} else {
-				rating.setCustomValidity('');
-			}
+		}
+	};
+	const loginConstraint: FieldsetConstraint<LoginForm> = {
+		email: {
+			required: true,
+		},
+		password: {
+			required: true,
+			minLength: 8,
 		},
 	};
-	const loginSchema: Schema<LoginForm> = {
-		fields: {
-			email: {
-				required: true,
-			},
-			password: {
-				required: true,
-				minLength: 8,
-			},
+	const checklistConstraint: FieldsetConstraint<Checklist> = {
+		title: {
+			required: true,
+		},
+		tasks: {
+			required: true,
 		},
 	};
-	const checklistSchmea: Schema<Checklist> = {
-		fields: {
-			title: {
-				required: true,
-			},
-			tasks: {
-				required: true,
-			},
+	const taskConstraint: FieldsetConstraint<Task> = {
+		content: {
+			required: true,
 		},
-	};
-	const taskSchema: Schema<Task> = {
-		fields: {
-			content: {
-				required: true,
-			},
-			completed: {},
-		},
+		// completed: {},
 	};
 
 	return (
@@ -107,7 +108,7 @@ export default function Basic() {
 				form="native"
 			>
 				<Form id="native" method="post">
-					<MovieFieldset schema={movieSchema} />
+					<MovieFieldset constraint={moveConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -115,8 +116,8 @@ export default function Basic() {
 				description="Setting up custom validation rules with user-defined error messages"
 				form="custom"
 			>
-				<Form id="custom" method="post">
-					<MovieFieldset schema={movieSchemaWithCustomMessage} />
+				<Form id="custom" method="post" validate={validateMovie}>
+					<MovieFieldset constraint={moveConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -125,7 +126,7 @@ export default function Basic() {
 				form="disable"
 			>
 				<Form id="disable" method="post" noValidate>
-					<LoginFieldset schema={loginSchema} />
+					<LoginFieldset constraint={loginConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -134,7 +135,7 @@ export default function Basic() {
 				form="onsubmit"
 			>
 				<Form id="onsubmit" method="post" initialReport="onSubmit">
-					<LoginFieldset schema={loginSchema} />
+					<LoginFieldset constraint={loginConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -143,7 +144,7 @@ export default function Basic() {
 				form="onchange"
 			>
 				<Form id="onchange" method="post" initialReport="onChange">
-					<LoginFieldset schema={loginSchema} />
+					<LoginFieldset constraint={loginConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -152,7 +153,7 @@ export default function Basic() {
 				form="onblur"
 			>
 				<Form id="onblur" method="post" initialReport="onBlur">
-					<LoginFieldset schema={loginSchema} />
+					<LoginFieldset constraint={loginConstraint} />
 				</Form>
 			</Playground>
 			<Playground
@@ -161,7 +162,7 @@ export default function Basic() {
 				form="remote"
 			>
 				<Form id="remote" method="post" />
-				<LoginFieldset form="remote" schema={loginSchema} />
+				<LoginFieldset form="remote" constraint={loginConstraint} />
 			</Playground>
 			<Playground
 				title="Nested list"
@@ -169,7 +170,10 @@ export default function Basic() {
 				form="nested-list"
 			>
 				<Form id="nested-list" method="post">
-					<ChecklistFieldset schema={checklistSchmea} taskSchema={taskSchema} />
+					<ChecklistFieldset
+						constraint={checklistConstraint}
+						taskConstraint={taskConstraint}
+					/>
 				</Form>
 			</Playground>
 		</>

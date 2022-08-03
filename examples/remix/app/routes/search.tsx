@@ -1,56 +1,7 @@
-import {
-	type Schema,
-	useForm,
-	useFieldset,
-	conform,
-	getFieldElements,
-} from '@conform-to/react';
 import { useSearchParams } from 'react-router-dom';
+import { useForm, isFieldElement } from '@conform-to/react';
 import { styles } from '~/helpers';
-
-/**
- * Define the schema of the fieldset manually
- */
-const schema: Schema<{
-	keyword?: string;
-	category: string;
-}> = {
-	/**
-	 * Required - Define the fields and coresponding constraint
-	 * All keys will be used as the name of the field
-	 */
-	fields: {
-		keyword: {
-			minLength: 4,
-		},
-		category: {
-			required: true,
-		},
-	},
-
-	/**
-	 * Optional - Customise validation behaviour
-	 * Fallbacks to native validation message provided by the browser vendors
-	 */
-	validate(element) {
-		const [keyword] = getFieldElements(element, 'keyword');
-
-		if (keyword.validity.tooShort) {
-			// Native constraint (minLength) with custom message
-			keyword.setCustomValidity('Please fill in at least 4 characters');
-		} else if (keyword.value === 'something') {
-			// Custom constraint
-			keyword.setCustomValidity('Be a little more specific please');
-		} else {
-			// Reset the custom error state of the field (Important!)
-			keyword.setCustomValidity('');
-		}
-
-		// Here we didn't call setCustomValidity for category
-		// So it fallbacks to native validation message
-		// These messages varies based on browser vendors
-	},
-};
+import { useState } from 'react';
 
 export default function SearchForm() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -63,24 +14,41 @@ export default function SearchForm() {
 		initialReport: 'onBlur',
 
 		/**
-		 * Native browser report will be enabled before hydation
-		 * if this is set to `true`. Default to `false`.
+		 * Customise validation behaviour
+		 * Fallbacks to native validation message provided
+		 * by the browser vendors
 		 */
-		fallbackNative: true,
+		validate(form) {
+			for (const field of form.elements) {
+				if (!isFieldElement(field)) {
+					continue;
+				}
 
-		/**
-		 * The form could be submitted regardless of the validity
-		 * of the form if this is set to `true`. Default to
-		 * `false`.
-		 */
-		noValidate: false,
+				switch (field.name) {
+					case 'keyword':
+						if (field.validity.tooShort) {
+							// Native constraint (minLength) with custom message
+							field.setCustomValidity('Please fill in at least 4 characters');
+						} else if (field.value === 'something') {
+							// Custom constraint
+							field.setCustomValidity('Be a little more specific please');
+						} else {
+							// Reset the custom error state of the field (Important!)
+							field.setCustomValidity('');
+						}
+						break;
+					case 'category':
+						// Here we didn't call setCustomValidity for category
+						// So it fallbacks to native validation message
+						// These messages varies based on browser vendors
+						break;
+				}
+			}
+		},
 
 		/**
 		 * Form submit handler
-		 *
-		 * It will NOT be called if
-		 * (1) one of the fields is invalid, and
-		 * (2) noValidate is set to false
+		 * This will be called only if all the fields are valid
 		 */
 		onSubmit(e) {
 			e.preventDefault();
@@ -95,12 +63,8 @@ export default function SearchForm() {
 			setSearchParams(query);
 		},
 	});
-	const [fieldsetProps, { keyword, category }] = useFieldset(schema, {
-		defaultValue: {
-			keyword: searchParams.get('keyword') ?? '',
-			category: searchParams.get('category') ?? '',
-		},
-	});
+	const [keywordError, setKeywordError] = useState('');
+	const [categoryError, setCategoryError] = useState('');
 
 	return (
 		<form {...formProps}>
@@ -112,20 +76,31 @@ export default function SearchForm() {
 					</pre>
 				) : null}
 			</header>
-			<fieldset className={styles.card} {...fieldsetProps}>
+			<fieldset className={styles.card}>
 				<label className="block">
 					<div className={styles.label}>Keyword</div>
 					<input
-						className={keyword.error ? styles.invalidInput : styles.input}
-						{...conform.input(keyword)}
+						className={keywordError ? styles.invalidInput : styles.input}
+						name="keyword"
+						minLength={4}
+						autoComplete="off"
+						onInvalid={(e) => {
+							e.preventDefault();
+							setKeywordError(e.currentTarget.validationMessage);
+						}}
 					/>
-					<p className={styles.errorMessage}>{keyword.error}</p>
+					<p className={styles.errorMessage}>{keywordError}</p>
 				</label>
 				<label className="block">
 					<div className={styles.label}>Category</div>
 					<select
-						className={category.error ? styles.invalidInput : styles.input}
-						{...conform.select(category)}
+						className={categoryError ? styles.invalidInput : styles.input}
+						name="category"
+						required
+						onInvalid={(e) => {
+							e.preventDefault();
+							setCategoryError(e.currentTarget.validationMessage);
+						}}
 					>
 						<option value="">Please select</option>
 						<option value="book">Book</option>
@@ -133,7 +108,7 @@ export default function SearchForm() {
 						<option value="movie">Movie</option>
 						<option value="music">Music</option>
 					</select>
-					<p className={styles.errorMessage}>{category.error}</p>
+					<p className={styles.errorMessage}>{categoryError}</p>
 				</label>
 				<button type="submit" className={styles.buttonPrimary}>
 					Search

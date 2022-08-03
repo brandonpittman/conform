@@ -1,4 +1,4 @@
-import { parse, resolve } from '@conform-to/zod';
+import { getConstraint, parse, resolve } from '@conform-to/zod';
 import { z } from 'zod';
 import { action, Playground, Form } from '~/playground';
 import { PaymentFieldset, StudentFieldset } from '~/fieldset';
@@ -44,8 +44,8 @@ export default function ZodIntegration() {
 				parse={(payload) => parse(payload, StudentSchema)}
 				form="native"
 			>
-				<Form id="native" method="post">
-					<StudentFieldset schema={resolve(StudentSchema)} />
+				<Form id="native" method="post" validate={resolve(StudentSchema)}>
+					<StudentFieldset constraint={getConstraint(StudentSchema)} />
 				</Form>
 			</Playground>
 			<Playground
@@ -54,8 +54,8 @@ export default function ZodIntegration() {
 				parse={(payload) => parse(payload, paymentSchema)}
 				form="type"
 			>
-				<Form id="type" method="post">
-					<PaymentFieldset schema={resolve(paymentSchema)} />
+				<Form id="type" method="post" validate={resolve(paymentSchema)}>
+					<PaymentFieldset constraint={getConstraint(paymentSchema)} />
 				</Form>
 			</Playground>
 		</>

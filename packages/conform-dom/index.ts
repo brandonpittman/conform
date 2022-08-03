@@ -16,10 +16,9 @@ export interface FieldProps<Type = any> extends Constraint {
 	form?: string;
 }
 
-export type Schema<Type extends Record<string, any>> = {
-	fields: { [Key in keyof Type]-?: Constraint };
-	validate?: (element: HTMLFieldSetElement) => void;
-};
+export interface FormValidate {
+	(form: HTMLFormElement): void;
+}
 
 /**
  * Data structure of the form value
@@ -81,81 +80,53 @@ export interface ControlAction<T = unknown> {
 	reorder: { from: number; to: number };
 }
 
+export type FieldsetConstraint<T> = { [K in keyof T]?: Constraint };
+
+export interface FieldsetConfig<Type>
+	extends Partial<
+		Pick<FieldProps<Type>, 'name' | 'form' | 'defaultValue' | 'error'>
+	> {
+	constraint?: FieldsetConstraint<Type>;
+}
+
 export function isFieldElement(element: unknown): element is FieldElement {
 	return (
 		element instanceof Element &&
 		(element.tagName === 'INPUT' ||
 			element.tagName === 'SELECT' ||
-			element.tagName === 'TEXTAREA' ||
-			element.tagName === 'BUTTON')
+			element.tagName === 'TEXTAREA')
 	);
 }
 
-export function setFieldState(
-	field: unknown,
-	state: { touched: boolean },
-): void {
-	if (!isFieldElement(field)) {
-		return;
-	}
-
-	if (state.touched) {
-		field.dataset.touched = 'true';
-	} else {
-		delete field.dataset.touched;
-	}
-}
-
-export function reportValidity(fieldset: HTMLFormElement): boolean {
-	let isValid = true;
-
-	for (const field of fieldset.elements) {
-		if (
-			isFieldElement(field) &&
-			field.dataset.touched &&
-			!field.checkValidity()
-		) {
-			isValid = false;
-		}
-	}
-
-	return isValid;
-}
-
 export function getFieldProps<Type extends Record<string, any>>(
-	schema: Schema<Type>,
-	options: {
-		name?: string;
-		form?: string;
-		defaultValue?: FieldsetData<Type, string>;
-		error?: FieldsetData<Type, string>;
-	},
+	config: FieldsetConfig<Type>,
 ): { [Key in keyof Type]-?: FieldProps<Type[Key]> } {
-	const result: { [Key in keyof Type]-?: FieldProps<Type[Key]> } = {} as any;
+	return new Proxy({} as { [Key in keyof Type]-?: FieldProps<Type[Key]> }, {
+		get(_target, key) {
+			if (typeof key !== 'string') {
+				return;
+			}
 
-	for (const key of Object.keys(schema.fields)) {
-		const constraint = schema.fields[key];
-		const props: FieldProps<any> = {
-			name: options.name ? `${options.name}.${key}` : key,
-			form: options.form,
-			defaultValue: options.defaultValue?.[key],
-			error: options.error?.[key],
-			...constraint,
-		};
+			const constraint = config.constraint?.[key];
+			const props: FieldProps<any> = {
+				name: config.name ? `${config.name}.${key}` : key,
+				form: config.form,
+				defaultValue: config.defaultValue?.[key],
+				error: config.error?.[key],
+				...constraint,
+			};
 
-		result[key as keyof Type] = props;
-	}
-
-	return result;
+			return props;
+		},
+	});
 }
 
-export function shouldSkipValidate(event: SubmitEvent): boolean {
+export function isFormNoValidate(event: SubmitEvent): boolean {
 	if (
-		event.submitter?.tagName === 'BUTTON' ||
-		event.submitter?.tagName === 'INPUT'
+		event.submitter instanceof HTMLButtonElement ||
+		event.submitter instanceof HTMLInputElement
 	) {
-		return (event.submitter as HTMLButtonElement | HTMLInputElement)
-			.formNoValidate;
+		return event.submitter.formNoValidate;
 	}
 
 	return false;
@@ -193,53 +164,36 @@ export function getName(paths: Array<string | number>): string {
 	}, '');
 }
 
-export function getFieldsetData(
+export function getKey(
 	fieldset: HTMLFieldSetElement,
-): FieldsetData<Record<string, unknown>, string> {
-	const entries: Array<[string, FormDataEntryValue]> = [];
-
-	if (fieldset.form) {
-		const formData = new FormData(fieldset.form);
-
-		for (const [key, value] of formData) {
-			if (!fieldset.name || key.startsWith(`${fieldset.name}.`)) {
-				entries.push([
-					key.slice(fieldset.name ? fieldset.name.length + 1 : 0),
-					value,
-				]);
-			}
-		}
+	element: FieldElement,
+): string | null {
+	if (fieldset.form !== element.form) {
+		return null;
 	}
 
-	return transform(entries);
+	const name =
+		fieldset.name === '' || element.name.startsWith(fieldset.name)
+			? element.name.slice(fieldset.name ? fieldset.name.length + 1 : 0)
+			: '';
+	const [key] = getPaths(name);
+
+	return typeof key === 'string' ? key : null;
 }
 
-export function setFieldsetError(
-	fieldset: HTMLFieldSetElement,
-	keys: string[],
+export function setFormError(
+	form: HTMLFormElement,
 	errors: Array<[string, string]>,
 ) {
 	const firstErrorByName = Object.fromEntries([...errors].reverse());
 
-	for (const element of fieldset.elements) {
-		if (!isFieldsetField(fieldset, keys, element)) {
+	for (const element of form.elements) {
+		if (!isFieldElement(element)) {
 			continue;
 		}
 
 		element.setCustomValidity(firstErrorByName[element.name] ?? '');
 	}
-}
-
-export function isFieldsetField(
-	fieldset: HTMLFieldSetElement,
-	keys: string[],
-	element: unknown,
-): element is FieldElement {
-	return (
-		isFieldElement(element) &&
-		element.form === fieldset.form &&
-		keys.some((key) => element.name.startsWith(getName([fieldset.name, key])))
-	);
 }
 
 export function transform(
@@ -398,24 +352,4 @@ export function parse(
 			error: {},
 		},
 	};
-}
-
-/**
- * Lookup the corresponding element based on fieldset name and key
- * @deprecated
- */
-export function getFieldElements(
-	fieldset: HTMLFieldSetElement,
-	key: string,
-): FieldElement[] {
-	const name = getName([fieldset.name ?? '', key]);
-	const item = fieldset.elements.namedItem(name);
-	const nodes =
-		item instanceof RadioNodeList
-			? Array.from(item)
-			: item !== null
-			? [item]
-			: [];
-
-	return nodes.filter(isFieldElement);
 }

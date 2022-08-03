@@ -1,4 +1,4 @@
-import { type Schema } from '@conform-to/dom';
+import { FieldsetConstraint } from '@conform-to/dom';
 import {
 	type FieldsetConfig,
 	useFieldset,
@@ -7,10 +7,6 @@ import {
 } from '@conform-to/react';
 import { Field } from './playground';
 
-interface FieldsetProps<T> extends FieldsetConfig<T> {
-	schema: Schema<T>;
-}
-
 export interface Student {
 	name: string;
 	remarks?: string;
@@ -18,11 +14,8 @@ export interface Student {
 	grade: string;
 }
 
-export function StudentFieldset({ schema, ...config }: FieldsetProps<Student>) {
-	const [fieldsetProps, { name, remarks, grade, score }] = useFieldset(
-		schema,
-		config,
-	);
+export function StudentFieldset(config: FieldsetConfig<Student>) {
+	const [fieldsetProps, { name, remarks, grade, score }] = useFieldset(config);
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -49,11 +42,9 @@ export interface Movie {
 	rating?: number;
 }
 
-export function MovieFieldset({ schema, ...config }: FieldsetProps<Movie>) {
-	const [fieldsetProps, { title, description, genres, rating }] = useFieldset(
-		schema,
-		config,
-	);
+export function MovieFieldset(config: FieldsetConfig<Movie>) {
+	const [fieldsetProps, { title, description, genres, rating }] =
+		useFieldset(config);
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -93,11 +84,9 @@ export interface Payment {
 	verified: boolean;
 }
 
-export function PaymentFieldset({ schema, ...config }: FieldsetProps<Payment>) {
-	const [fieldsetProps, { account, amount, timestamp, verified }] = useFieldset(
-		schema,
-		config,
-	);
+export function PaymentFieldset(config: FieldsetConfig<Payment>) {
+	const [fieldsetProps, { account, amount, timestamp, verified }] =
+		useFieldset(config);
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -124,8 +113,8 @@ export interface LoginForm {
 	password: string;
 }
 
-export function LoginFieldset({ schema, ...config }: FieldsetProps<LoginForm>) {
-	const [fieldsetProps, { email, password }] = useFieldset(schema, config);
+export function LoginFieldset(config: FieldsetConfig<LoginForm>) {
+	const [fieldsetProps, { email, password }] = useFieldset<LoginForm>(config);
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -144,8 +133,8 @@ export interface Task {
 	completed: boolean;
 }
 
-export function TaskFieldset({ schema, ...config }: FieldsetProps<Task>) {
-	const [fieldsetProps, { content, completed }] = useFieldset(schema, config);
+export function TaskFieldset(config: FieldsetConfig<Task>) {
+	const [fieldsetProps, { content, completed }] = useFieldset<Task>(config);
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -165,11 +154,10 @@ export interface Checklist {
 }
 
 export function ChecklistFieldset({
-	schema,
-	taskSchema,
+	taskConstraint,
 	...config
-}: FieldsetProps<Checklist> & { taskSchema: Schema<Task> }) {
-	const [fieldsetProps, { title, tasks }] = useFieldset(schema, config);
+}: FieldsetConfig<Checklist> & { taskConstraint: FieldsetConstraint<Task> }) {
+	const [fieldsetProps, { title, tasks }] = useFieldset(config);
 	const [taskList, control] = useFieldList(tasks);
 
 	return (
@@ -180,7 +168,7 @@ export function ChecklistFieldset({
 			<ol>
 				{taskList.map((task, index) => (
 					<li key={task.key} className="border rounded-md p-4 mb-4">
-						<TaskFieldset schema={taskSchema} {...task.props} />
+						<TaskFieldset constraint={taskConstraint} {...task.props} />
 						<div className="flex flex-row gap-2">
 							<button
 								className="rounded-md border p-2 hover:border-black"

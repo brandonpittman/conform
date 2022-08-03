@@ -1,5 +1,5 @@
 import { useFieldset, useForm, useControlledInput } from '@conform-to/react';
-import { resolve } from '@conform-to/zod';
+import { resolve, getConstraint } from '@conform-to/zod';
 import { TextField, Button, MenuItem, Stack } from '@mui/material';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -15,14 +15,15 @@ export default function Integration() {
 	const [query, setQuery] = useState<any>(null);
 	const formProps = useForm({
 		initialReport: 'onBlur',
+		validate: resolve(muiFields),
 		onSubmit(e) {
 			e.preventDefault();
 			setQuery(Object.fromEntries(new FormData(e.currentTarget)));
 		},
 	});
-	const [fieldsetProps, { text, select, textarea }] = useFieldset(
-		resolve(muiFields),
-	);
+	const [fieldsetProps, { text, select, textarea }] = useFieldset({
+		constraint: getConstraint(muiFields),
+	});
 
 	/**
 	 * MUI Select is a controlled component and behaves very different from native input/select.

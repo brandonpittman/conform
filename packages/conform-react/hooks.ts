@@ -1,15 +1,12 @@
 import {
 	type FieldProps,
-	type Schema,
 	type FieldsetData,
+	type FieldsetConfig,
 	isFieldElement,
-	setFieldState,
-	reportValidity,
-	shouldSkipValidate,
+	isFormNoValidate,
 	getFieldProps,
+	getKey,
 	getControlButtonProps,
-	getFieldElements,
-	getName,
 	applyControlCommand,
 } from '@conform-to/dom';
 import {
@@ -23,7 +20,6 @@ import {
 	useState,
 	useEffect,
 	useMemo,
-	useReducer,
 	createElement,
 } from 'react';
 
@@ -47,6 +43,11 @@ export interface FormConfig {
 	noValidate?: boolean;
 
 	/**
+	 *
+	 */
+	validate?: (form: HTMLFormElement) => void;
+
+	/**
 	 * The submit handler will be triggered only when the form is valid.
 	 * Or when noValidate is set to `true`
 	 */
@@ -62,292 +63,204 @@ interface FormProps {
 }
 
 export function useForm({
-	onReset,
+	initialReport,
+	fallbackNative,
+	validate,
+	noValidate,
 	onSubmit,
-	noValidate = false,
-	fallbackNative = false,
-	initialReport = 'onSubmit',
+	onReset,
 }: FormConfig = {}): FormProps {
 	const ref = useRef<HTMLFormElement>(null);
 	const [formNoValidate, setFormNoValidate] = useState(
 		noValidate || !fallbackNative,
 	);
-	const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
-		if (!noValidate) {
-			for (let element of event.currentTarget.elements) {
-				setFieldState(element, { touched: true });
-			}
-
-			if (
-				!shouldSkipValidate(event.nativeEvent as SubmitEvent) &&
-				!event.currentTarget.reportValidity()
-			) {
-				return event.preventDefault();
-			}
-		}
-
-		onSubmit?.(event);
-	};
-	const handleReset: FormEventHandler<HTMLFormElement> = (event) => {
-		for (let element of event.currentTarget.elements) {
-			setFieldState(element, { touched: false });
-		}
-
-		onReset?.(event);
-	};
 
 	useEffect(() => {
 		setFormNoValidate(true);
 	}, []);
 
 	useEffect(() => {
-		if (noValidate) {
+		const form = ref.current;
+
+		if (!form || noValidate) {
 			return;
 		}
 
-		const handleChange = (event: Event) => {
-			if (
-				!ref.current ||
-				!isFieldElement(event.target) ||
-				event.target?.form !== ref.current
-			) {
+		console.log('validate', form);
+		validate?.(form);
+
+		const handleInput = (event: Event) => {
+			const field = event.target;
+
+			if (!isFieldElement(field) || field.form !== form) {
 				return;
 			}
+
+			validate?.(form);
 
 			if (initialReport === 'onChange') {
-				setFieldState(event.target, { touched: true });
+				field.dataset.conformTouched = 'true';
 			}
 
-			reportValidity(ref.current);
+			for (const field of form.elements) {
+				if (isFieldElement(field) && field.dataset.conformTouched) {
+					if (field.validity.valid) {
+						field.dispatchEvent(new Event('invalid'));
+					} else {
+						field.reportValidity();
+					}
+				}
+			}
 		};
-		const handleBlur = (event: FocusEvent) => {
+		const handleFocusout = (event: FocusEvent) => {
+			const field = event.target;
+
 			if (
-				!ref.current ||
-				!isFieldElement(event.target) ||
-				event.target?.form !== ref.current
+				!isFieldElement(field) ||
+				field.form !== form ||
+				initialReport !== 'onBlur'
 			) {
 				return;
 			}
 
-			if (initialReport === 'onBlur') {
-				setFieldState(event.target, { touched: true });
-			}
-
-			reportValidity(ref.current);
+			field.dataset.conformTouched = 'true';
+			field.reportValidity();
 		};
 
-		document.addEventListener('input', handleChange);
-		document.addEventListener('focusout', handleBlur);
+		document.addEventListener('input', handleInput);
+		document.addEventListener('focusout', handleFocusout);
 
 		return () => {
-			document.removeEventListener('input', handleChange);
-			document.removeEventListener('focusout', handleBlur);
+			document.removeEventListener('input', handleInput);
+			document.removeEventListener('focusout', handleFocusout);
 		};
-	}, [noValidate, initialReport]);
+	}, [validate, initialReport, noValidate]);
 
 	return {
-		ref,
-		onSubmit: handleSubmit,
-		onReset: handleReset,
+		ref: ref,
+		onSubmit(event) {
+			if (!noValidate) {
+				const form = event.currentTarget;
+
+				for (const field of form.elements) {
+					if (isFieldElement(field)) {
+						field.dataset.conformTouched = 'true';
+					}
+				}
+
+				if (
+					!isFormNoValidate(event.nativeEvent as SubmitEvent) &&
+					!event.currentTarget.reportValidity()
+				) {
+					return event.preventDefault();
+				}
+			}
+
+			onSubmit?.(event);
+		},
+		onReset(event) {
+			const form = event.currentTarget;
+
+			for (const field of form.elements) {
+				if (isFieldElement(field)) {
+					delete field.dataset.conformTouched;
+				}
+			}
+
+			onReset?.(event);
+
+			setTimeout(() => {
+				validate?.(form);
+			}, 0);
+		},
 		noValidate: formNoValidate,
 	};
 }
-
-export type FieldsetConfig<Type> = Partial<
-	Pick<FieldProps<Type>, 'name' | 'form' | 'defaultValue' | 'error'>
->;
 
 interface FieldsetProps {
 	ref: RefObject<HTMLFieldSetElement>;
 	name?: string;
 	form?: string;
-	onInput: FormEventHandler<HTMLFieldSetElement>;
-	onInvalid: FormEventHandler<HTMLFieldSetElement>;
+	onInvalidCapture: FormEventHandler<HTMLFieldSetElement>;
 }
 
 export function useFieldset<Type extends Record<string, any>>(
-	schema: Schema<Type>,
 	config: FieldsetConfig<Type> = {},
 ): [FieldsetProps, { [Key in keyof Type]-?: FieldProps<Type[Key]> }] {
 	const ref = useRef<HTMLFieldSetElement>(null);
-	const [errorMessage, dispatch] = useReducer(
-		(
-			state: Record<string, string>,
-			action:
-				| {
-						type: 'migrate';
-						payload: {
-							keys: string[];
-							error: FieldsetData<Type, string> | undefined;
-						};
-				  }
-				| { type: 'cleanup'; payload: { fieldset: HTMLFieldSetElement } }
-				| { type: 'report'; payload: { key: string; message: string } }
-				| { type: 'reset' },
-		) => {
-			switch (action.type) {
-				case 'report': {
-					const { key, message } = action.payload;
+	const [errorMessage, setErrorMessage] = useState(config.error ?? {});
 
-					if (state[key] === message) {
-						return state;
-					}
+	useEffect(() => {
+		const fieldset = ref.current;
 
-					return {
-						...state,
-						[key]: message,
-					};
-				}
-				case 'migrate': {
-					let { keys, error } = action.payload;
-					let nextState = state;
+		if (!fieldset) {
+			console.warn(
+				'No fieldset ref found; You must pass the fieldsetProps to the fieldset element',
+			);
+			return;
+		}
 
-					for (let key of Object.keys(keys)) {
-						const prevError = state[key];
-						const nextError = error?.[key];
+		if (!fieldset?.form) {
+			console.warn(
+				'No form element is linked to the fieldset; Do you forgot setting the form attribute?',
+			);
+			return;
+		}
 
-						if (typeof nextError === 'string' && prevError !== nextError) {
-							return {
-								...nextState,
-								[key]: nextError,
-							};
-						}
-					}
-
-					return nextState;
-				}
-				case 'cleanup': {
-					let { fieldset } = action.payload;
-					let updates: Array<[string, string]> = [];
-
-					for (let [key, message] of Object.entries(state)) {
-						if (!message) {
-							continue;
-						}
-
-						const fields = getFieldElements(fieldset, key);
-
-						if (fields.every((field) => field.validity.valid)) {
-							updates.push([key, '']);
-						}
-					}
-
-					if (updates.length === 0) {
-						return state;
-					}
-
-					return {
-						...state,
-						...Object.fromEntries(updates),
-					};
-				}
-				case 'reset': {
-					return {};
-				}
-			}
-		},
-		{},
-		() =>
-			Object.fromEntries(
-				Object.keys(schema.fields).reduce<Array<[string, string]>>(
-					(result, name) => {
-						const error = config.error?.[name];
-
-						if (typeof error === 'string') {
-							result.push([name, error]);
-						}
-
-						return result;
-					},
-					[],
-				),
-			),
-	);
-
-	useEffect(
-		() => {
-			const fieldset = ref.current;
-
-			if (!fieldset) {
-				console.warn(
-					'No fieldset ref found; You must pass the fieldsetProps to the fieldset element',
-				);
+		const resetHandler = (e: Event) => {
+			if (e.target !== fieldset.form) {
 				return;
 			}
 
-			if (!fieldset?.form) {
-				console.warn(
-					'No form element is linked to the fieldset; Do you forgot setting the form attribute?',
-				);
-			}
+			setErrorMessage({});
+		};
 
-			schema.validate?.(fieldset);
-			dispatch({ type: 'cleanup', payload: { fieldset } });
+		document.addEventListener('reset', resetHandler);
 
-			const resetHandler = (e: Event) => {
-				if (e.target !== fieldset.form) {
-					return;
-				}
+		return () => {
+			document.removeEventListener('reset', resetHandler);
+		};
+	}, []);
 
-				dispatch({ type: 'reset' });
-
-				setTimeout(() => {
-					// Delay revalidation until reset is completed
-					schema.validate?.(fieldset);
-				}, 0);
-			};
-
-			document.addEventListener('reset', resetHandler);
-
-			return () => {
-				document.removeEventListener('reset', resetHandler);
-			};
-		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[schema.validate],
-	);
-
-	useEffect(() => {
-		dispatch({
-			type: 'migrate',
-			payload: {
-				keys: Object.keys(schema.fields),
-				error: config.error,
-			},
-		});
-	}, [config.error, schema.fields]);
+	// useEffect(() => {
+	// 	setErrorMessage(config.error ?? {});
+	// }, [config.error]);
 
 	return [
 		{
 			ref,
 			name: config.name,
 			form: config.form,
-			onInput(e: FormEvent<HTMLFieldSetElement>) {
+			onInvalidCapture(e: FormEvent<HTMLFieldSetElement>) {
 				const fieldset = e.currentTarget;
+				const field = e.target;
 
-				schema.validate?.(fieldset);
-				dispatch({ type: 'cleanup', payload: { fieldset } });
-			},
-			onInvalid(e: FormEvent<HTMLFieldSetElement>) {
-				const element = isFieldElement(e.target) ? e.target : null;
-				const key = Object.keys(schema.fields).find(
-					(key) => element?.name === getName([e.currentTarget.name, key]),
-				);
-
-				if (!element || !key) {
+				if (!isFieldElement(field) || field.form !== fieldset.form) {
 					return;
 				}
 
-				// Disable browser report
-				e.preventDefault();
+				const key = getKey(e.currentTarget, field);
 
-				dispatch({
-					type: 'report',
-					payload: { key, message: element.validationMessage },
-				});
+				if (key) {
+					setErrorMessage((prev) => {
+						// @ts-expect-error
+						const prevMessage = prev[key] ?? '';
+
+						if (prevMessage === field.validationMessage) {
+							return prev;
+						}
+
+						return {
+							...prev,
+							[key]: field.validationMessage,
+						};
+					});
+
+					e.preventDefault();
+				}
 			},
 		},
-		getFieldProps(schema, {
+		getFieldProps({
 			...config,
 			error: Object.assign({}, config.error, errorMessage),
 		}),

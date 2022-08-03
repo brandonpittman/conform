@@ -6,7 +6,7 @@ import {
 	useFieldList,
 	conform,
 } from '@conform-to/react';
-import { parse, resolve } from '@conform-to/zod';
+import { parse, resolve, getConstraint } from '@conform-to/zod';
 import { type ActionFunction } from '@remix-run/node';
 import { Form, useActionData } from '@remix-run/react';
 import { z } from 'zod';
@@ -33,6 +33,8 @@ const order = z.object({
 	remarks: z.string().optional(),
 });
 
+type Order = z.infer<typeof order>;
+
 export let action: ActionFunction = async ({ request }) => {
 	const formData = await request.formData();
 	const submission = parse(formData, order);
@@ -41,15 +43,16 @@ export let action: ActionFunction = async ({ request }) => {
 };
 
 export default function OrderForm() {
-	const submission = useActionData<Submission<z.infer<typeof order>>>();
-	const formProps = useForm({ initialReport: 'onBlur' });
-	const [fieldsetProps, { products, shipping, remarks }] = useFieldset(
-		resolve(order),
-		{
-			defaultValue: submission?.form.value,
-			error: submission?.form.error,
-		},
-	);
+	const submission = useActionData<Submission<Order>>();
+	const formProps = useForm({
+		initialReport: 'onBlur',
+		validate: resolve(order),
+	});
+	const [fieldsetProps, { products, shipping, remarks }] = useFieldset({
+		constraint: getConstraint(order),
+		defaultValue: submission?.form.value,
+		error: submission?.form.error,
+	});
 	const [productList, control] = useFieldList(products);
 
 	return (
@@ -104,10 +107,10 @@ export default function OrderForm() {
 }
 
 function ShippingFieldset(config: FieldsetConfig<z.infer<typeof shipping>>) {
-	const [fieldsetProps, { address, delivery }] = useFieldset(
-		resolve(shipping),
-		config,
-	);
+	const [fieldsetProps, { address, delivery }] = useFieldset({
+		constraint: getConstraint(shipping),
+		...config,
+	});
 
 	return (
 		<fieldset {...fieldsetProps}>
@@ -150,10 +153,10 @@ function ProductFieldset({
 	label,
 	...config
 }: FieldsetConfig<z.infer<typeof product>> & { label: string }) {
-	const [fieldsetProps, { item, quantity }] = useFieldset(
-		resolve(product),
-		config,
-	);
+	const [fieldsetProps, { item, quantity }] = useFieldset({
+		constraint: getConstraint(product),
+		...config,
+	});
 
 	return (
 		<fieldset className="flex gap-4" {...fieldsetProps}>

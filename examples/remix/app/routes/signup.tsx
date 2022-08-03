@@ -4,7 +4,7 @@ import {
 	useFieldset,
 	conform,
 } from '@conform-to/react';
-import { resolve, parse } from '@conform-to/zod';
+import { resolve, parse, getConstraint } from '@conform-to/zod';
 import { useState } from 'react';
 import { z } from 'zod';
 import { styles } from '~/helpers';
@@ -30,6 +30,7 @@ export default function SignupForm() {
 		z.infer<typeof signup>
 	> | null>(null);
 	const formProps = useForm({
+		validate: resolve(signup),
 		onSubmit(event) {
 			event.preventDefault();
 
@@ -39,13 +40,11 @@ export default function SignupForm() {
 			setSubmission(submission);
 		},
 	});
-	const [fieldsetProps, { email, password, confirm, remember }] = useFieldset(
-		resolve(signup),
-		{
-			defaultValue: submission?.form.value,
-			error: submission?.form.error,
-		},
-	);
+	const [fieldsetProps, { email, password, confirm, remember }] = useFieldset({
+		constraint: getConstraint(signup),
+		defaultValue: submission?.form.value,
+		error: submission?.form.error,
+	});
 
 	return (
 		<form {...formProps}>
