@@ -3,8 +3,6 @@ import {
 	type FieldsetData,
 	type FieldsetConfig,
 	isFieldElement,
-	isFormNoValidate,
-	getFieldProps,
 	getKey,
 	getControlButtonProps,
 	applyControlCommand,
@@ -62,31 +60,25 @@ interface FormProps {
 	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
-export function useForm({
-	initialReport,
-	fallbackNative,
-	validate,
-	noValidate,
-	onSubmit,
-	onReset,
-}: FormConfig = {}): FormProps {
+export function useForm(config: FormConfig = {}): FormProps {
+	const { validate } = config;
+
 	const ref = useRef<HTMLFormElement>(null);
-	const [formNoValidate, setFormNoValidate] = useState(
-		noValidate || !fallbackNative,
+	const [noValidate, setNoValidate] = useState(
+		config.noValidate || !config.fallbackNative,
 	);
 
 	useEffect(() => {
-		setFormNoValidate(true);
+		setNoValidate(true);
 	}, []);
 
 	useEffect(() => {
 		const form = ref.current;
 
-		if (!form || noValidate) {
+		if (!form || config.noValidate) {
 			return;
 		}
 
-		console.log('validate', form);
 		validate?.(form);
 
 		const handleInput = (event: Event) => {
@@ -98,7 +90,7 @@ export function useForm({
 
 			validate?.(form);
 
-			if (initialReport === 'onChange') {
+			if (config.initialReport === 'onChange') {
 				field.dataset.conformTouched = 'true';
 			}
 
@@ -118,7 +110,7 @@ export function useForm({
 			if (
 				!isFieldElement(field) ||
 				field.form !== form ||
-				initialReport !== 'onBlur'
+				config.initialReport !== 'onBlur'
 			) {
 				return;
 			}
@@ -134,13 +126,14 @@ export function useForm({
 			document.removeEventListener('input', handleInput);
 			document.removeEventListener('focusout', handleFocusout);
 		};
-	}, [validate, initialReport, noValidate]);
+	}, [validate, config.initialReport, config.noValidate]);
 
 	return {
 		ref: ref,
 		onSubmit(event) {
-			if (!noValidate) {
+			if (!config.noValidate) {
 				const form = event.currentTarget;
+				const nativeEvent = event.nativeEvent as SubmitEvent;
 
 				for (const field of form.elements) {
 					if (isFieldElement(field)) {
@@ -148,15 +141,22 @@ export function useForm({
 					}
 				}
 
+				let formNoValidate = false;
+
 				if (
-					!isFormNoValidate(event.nativeEvent as SubmitEvent) &&
-					!event.currentTarget.reportValidity()
+					nativeEvent.submitter instanceof HTMLButtonElement ||
+					nativeEvent.submitter instanceof HTMLInputElement
 				) {
-					return event.preventDefault();
+					formNoValidate = nativeEvent.submitter.formNoValidate;
+				}
+
+				if (!formNoValidate && !event.currentTarget.reportValidity()) {
+					event.preventDefault();
+					return;
 				}
 			}
 
-			onSubmit?.(event);
+			config.onSubmit?.(event);
 		},
 		onReset(event) {
 			const form = event.currentTarget;
@@ -167,13 +167,13 @@ export function useForm({
 				}
 			}
 
-			onReset?.(event);
+			config.onReset?.(event);
 
 			setTimeout(() => {
 				validate?.(form);
 			}, 0);
 		},
-		noValidate: formNoValidate,
+		noValidate,
 	};
 }
 
@@ -181,14 +181,15 @@ interface FieldsetProps {
 	ref: RefObject<HTMLFieldSetElement>;
 	name?: string;
 	form?: string;
-	onInvalidCapture: FormEventHandler<HTMLFieldSetElement>;
 }
 
 export function useFieldset<Type extends Record<string, any>>(
 	config: FieldsetConfig<Type> = {},
 ): [FieldsetProps, { [Key in keyof Type]-?: FieldProps<Type[Key]> }] {
 	const ref = useRef<HTMLFieldSetElement>(null);
-	const [errorMessage, setErrorMessage] = useState(config.error ?? {});
+	const [errorMessage, setErrorMessage] = useState<
+		FieldsetData<Record<string, any>, string>
+	>(config.error ?? {});
 
 	useEffect(() => {
 		const fieldset = ref.current;
@@ -207,63 +208,77 @@ export function useFieldset<Type extends Record<string, any>>(
 			return;
 		}
 
-		const resetHandler = (e: Event) => {
-			if (e.target !== fieldset.form) {
+		const invalidHandler = (event: Event) => {
+			const field = event.target;
+
+			if (!isFieldElement(field) || field.form !== fieldset.form) {
+				return;
+			}
+
+			const key = getKey(field.name, fieldset.name);
+
+			if (key) {
+				setErrorMessage((prev) => {
+					const prevMessage = prev[key] ?? '';
+
+					if (prevMessage === field.validationMessage) {
+						return prev;
+					}
+
+					return {
+						...prev,
+						[key]: field.validationMessage,
+					};
+				});
+
+				event.preventDefault();
+			}
+		};
+		const resetHandler = (event: Event) => {
+			if (event.target !== fieldset.form) {
 				return;
 			}
 
 			setErrorMessage({});
 		};
 
+		document.addEventListener('invalid', invalidHandler, true);
 		document.addEventListener('reset', resetHandler);
 
 		return () => {
+			document.removeEventListener('invalid', invalidHandler, true);
 			document.removeEventListener('reset', resetHandler);
 		};
 	}, []);
 
-	// useEffect(() => {
-	// 	setErrorMessage(config.error ?? {});
-	// }, [config.error]);
+	useEffect(() => {
+		setErrorMessage(config.error ?? {});
+	}, [config.error]);
 
 	return [
 		{
 			ref,
 			name: config.name,
 			form: config.form,
-			onInvalidCapture(e: FormEvent<HTMLFieldSetElement>) {
-				const fieldset = e.currentTarget;
-				const field = e.target;
-
-				if (!isFieldElement(field) || field.form !== fieldset.form) {
+		},
+		new Proxy(config, {
+			get(target, key) {
+				if (typeof key !== 'string') {
 					return;
 				}
 
-				const key = getKey(e.currentTarget, field);
+				const constraint = target.constraint?.[key];
+				const props: FieldProps<unknown> = {
+					name: target.name ? `${target.name}.${key}` : key,
+					form: target.form,
+					defaultValue: target.defaultValue?.[key],
+					error: errorMessage[key] ?? target.error?.[key],
+					...constraint,
+				};
 
-				if (key) {
-					setErrorMessage((prev) => {
-						// @ts-expect-error
-						const prevMessage = prev[key] ?? '';
-
-						if (prevMessage === field.validationMessage) {
-							return prev;
-						}
-
-						return {
-							...prev,
-							[key]: field.validationMessage,
-						};
-					});
-
-					e.preventDefault();
-				}
+				return props;
 			},
-		},
-		getFieldProps({
-			...config,
-			error: Object.assign({}, config.error, errorMessage),
-		}),
+		}) as { [Key in keyof Type]-?: FieldProps<Type[Key]> },
 	];
 }
 
@@ -307,7 +322,7 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 			},
 		}),
 	);
-	const controls: FieldListControl<Payload> = {
+	const control: FieldListControl<Payload> = {
 		prepend(defaultValue) {
 			return {
 				...getControlButtonProps(props.name, 'prepend', {
@@ -394,7 +409,7 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 		setEntries(Object.entries(props.defaultValue ?? [undefined]));
 	}, [props.defaultValue]);
 
-	return [list, controls];
+	return [list, control];
 }
 
 interface InputControl {

@@ -32,7 +32,7 @@ export type FieldsetData<Type, Value> = Type extends
 	? Value
 	: Type extends Array<infer InnerType>
 	? Array<FieldsetData<InnerType, Value>>
-	: Type extends Object
+	: Type extends Record<string, any>
 	? { [Key in keyof Type]?: FieldsetData<Type[Key], Value> }
 	: unknown;
 
@@ -94,42 +94,9 @@ export function isFieldElement(element: unknown): element is FieldElement {
 		element instanceof Element &&
 		(element.tagName === 'INPUT' ||
 			element.tagName === 'SELECT' ||
-			element.tagName === 'TEXTAREA')
+			element.tagName === 'TEXTAREA' ||
+			element.tagName === 'BUTTON')
 	);
-}
-
-export function getFieldProps<Type extends Record<string, any>>(
-	config: FieldsetConfig<Type>,
-): { [Key in keyof Type]-?: FieldProps<Type[Key]> } {
-	return new Proxy({} as { [Key in keyof Type]-?: FieldProps<Type[Key]> }, {
-		get(_target, key) {
-			if (typeof key !== 'string') {
-				return;
-			}
-
-			const constraint = config.constraint?.[key];
-			const props: FieldProps<any> = {
-				name: config.name ? `${config.name}.${key}` : key,
-				form: config.form,
-				defaultValue: config.defaultValue?.[key],
-				error: config.error?.[key],
-				...constraint,
-			};
-
-			return props;
-		},
-	});
-}
-
-export function isFormNoValidate(event: SubmitEvent): boolean {
-	if (
-		event.submitter instanceof HTMLButtonElement ||
-		event.submitter instanceof HTMLInputElement
-	) {
-		return event.submitter.formNoValidate;
-	}
-
-	return false;
 }
 
 export function getPaths(name?: string): Array<string | number> {
@@ -165,16 +132,12 @@ export function getName(paths: Array<string | number>): string {
 }
 
 export function getKey(
-	fieldset: HTMLFieldSetElement,
-	element: FieldElement,
+	fieldName: string,
+	fieldsetName: string = '',
 ): string | null {
-	if (fieldset.form !== element.form) {
-		return null;
-	}
-
 	const name =
-		fieldset.name === '' || element.name.startsWith(fieldset.name)
-			? element.name.slice(fieldset.name ? fieldset.name.length + 1 : 0)
+		fieldsetName === '' || fieldName.startsWith(fieldsetName)
+			? fieldName.slice(fieldsetName ? fieldsetName.length + 1 : 0)
 			: '';
 	const [key] = getPaths(name);
 

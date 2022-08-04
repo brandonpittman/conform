@@ -2,7 +2,6 @@ export {
 	type FieldsetConfig,
 	type FieldProps,
 	type FormState,
-	type Schema,
 	type Submission,
 	parse,
 	isFieldElement,
