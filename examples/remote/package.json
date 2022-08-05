@@ -1,6 +1,5 @@
 {
-	"name": "remote",
-	"version": "0.1.0",
+	"name": "@conform-to/remote-example",
 	"private": true,
 	"dependencies": {
 		"@conform-to/react": "0.2.0",

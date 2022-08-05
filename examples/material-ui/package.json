@@ -1,5 +1,5 @@
 {
-	"name": "material-ui",
+	"name": "@conform-to/mui-example",
 	"private": true,
 	"dependencies": {
 		"@conform-to/react": "0.2.0",
