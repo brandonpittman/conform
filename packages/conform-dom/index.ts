@@ -132,9 +132,13 @@ export function getKey(
 		fieldsetName === '' || fieldName.startsWith(fieldsetName)
 			? fieldName.slice(fieldsetName ? fieldsetName.length + 1 : 0)
 			: '';
-	const [key] = getPaths(name);
+	const paths = getPaths(name);
 
-	return typeof key === 'string' ? key : null;
+	if (paths.length > 1) {
+		return null;
+	}
+
+	return typeof paths[0] === 'string' ? paths[0] : null;
 }
 
 export function setFormError(

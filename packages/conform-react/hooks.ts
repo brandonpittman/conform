@@ -187,8 +187,8 @@ export function useFieldset<Type extends Record<string, any>>(
 ): [FieldsetProps, { [Key in keyof Type]-?: FieldProps<Type[Key]> }] {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const [errorMessage, setErrorMessage] = useState<
-		FieldsetData<Record<string, any>, string>
-	>(config.error ?? {});
+		FieldsetData<Record<string, any>, string> | undefined
+	>(config.error);
 
 	useEffect(() => {
 		const fieldset = ref.current;
@@ -218,7 +218,7 @@ export function useFieldset<Type extends Record<string, any>>(
 
 			if (key) {
 				setErrorMessage((prev) => {
-					const prevMessage = prev[key] ?? '';
+					const prevMessage = prev?.[key] ?? '';
 
 					if (prevMessage === field.validationMessage) {
 						return prev;
@@ -251,7 +251,7 @@ export function useFieldset<Type extends Record<string, any>>(
 	}, []);
 
 	useEffect(() => {
-		setErrorMessage(config.error ?? {});
+		setErrorMessage(config.error);
 	}, [config.error]);
 
 	return [
@@ -271,7 +271,7 @@ export function useFieldset<Type extends Record<string, any>>(
 					name: target.name ? `${target.name}.${key}` : key,
 					form: target.form,
 					defaultValue: target.defaultValue?.[key],
-					error: errorMessage[key] ?? target.error?.[key],
+					error: errorMessage?.[key] ?? target.error?.[key],
 					...constraint,
 				};
 
