@@ -1,3 +1,22 @@
+export type FieldElement =
+	| HTMLInputElement
+	| HTMLSelectElement
+	| HTMLTextAreaElement
+	| HTMLButtonElement;
+
+export type SchemaLike<Schema, Payload> = Schema extends
+	| string
+	| number
+	| Date
+	| boolean
+	| undefined
+	? Payload
+	: Schema extends Array<infer InnerType>
+	? Array<SchemaLike<InnerType, Payload>>
+	: Schema extends Record<string, any>
+	? { [Key in keyof Schema]?: SchemaLike<Schema[Key], Payload> }
+	: unknown;
+
 export type Constraint = {
 	required?: boolean;
 	minLength?: number;
@@ -9,78 +28,54 @@ export type Constraint = {
 	pattern?: string;
 };
 
-export interface FieldProps<Type = any> extends Constraint {
-	name: string;
-	defaultValue?: FieldsetData<Type, string>;
-	error?: FieldsetData<Type, string>;
-	form?: string;
-}
-
 export interface FormValidate {
 	(form: HTMLFormElement): void;
 }
 
-/**
- * Data structure of the form value
- */
-export type FieldsetData<Type, Value> = Type extends
-	| string
-	| number
-	| Date
-	| boolean
-	| undefined
-	? Value
-	: Type extends Array<infer InnerType>
-	? Array<FieldsetData<InnerType, Value>>
-	: Type extends Record<string, any>
-	? { [Key in keyof Type]?: FieldsetData<Type[Key], Value> }
-	: unknown;
-
-/**
- * Element type that might be a candiate of Constraint Validation
- */
-export type FieldElement =
-	| HTMLInputElement
-	| HTMLSelectElement
-	| HTMLTextAreaElement
-	| HTMLButtonElement;
-
-export interface FormState<T> {
-	value: FieldsetData<T, string>;
-	error: FieldsetData<T, string>;
+export interface FieldProps<Schema = any> extends Constraint {
+	name: string;
+	defaultValue?: SchemaLike<Schema, string>;
+	error?: SchemaLike<Schema, string>;
+	form?: string;
 }
 
-export type Submission<T extends Record<string, unknown>> =
+export type FieldsetConstraint<Schema> = {
+	[Key in keyof Schema]?: Constraint;
+};
+
+export interface FieldsetConfig<Schema>
+	extends Partial<
+		Pick<FieldProps<Schema>, 'name' | 'form' | 'defaultValue' | 'error'>
+	> {
+	constraint?: FieldsetConstraint<Schema>;
+}
+
+export interface FormState<Schema> {
+	value: SchemaLike<Schema, string>;
+	error: SchemaLike<Schema, string>;
+}
+
+export type Submission<Schema extends Record<string, unknown>> =
 	| {
 			state: 'modified';
-			form: FormState<T>;
+			form: FormState<Schema>;
 	  }
 	| {
 			state: 'rejected';
-			form: FormState<T>;
+			form: FormState<Schema>;
 	  }
 	| {
 			state: 'accepted';
-			data: T;
-			form: FormState<T>;
+			data: Schema;
+			form: FormState<Schema>;
 	  };
 
-export interface ControlAction<T = unknown> {
-	prepend: { defaultValue: T };
-	append: { defaultValue: T };
-	replace: { defaultValue: T; index: number };
-	remove: { index: number };
-	reorder: { from: number; to: number };
-}
-
-export type FieldsetConstraint<T> = { [K in keyof T]?: Constraint };
-
-export interface FieldsetConfig<Type>
-	extends Partial<
-		Pick<FieldProps<Type>, 'name' | 'form' | 'defaultValue' | 'error'>
-	> {
-	constraint?: FieldsetConstraint<Type>;
-}
+export type ListCommand<Schema> =
+	| { type: 'prepend'; defaultValue: Schema }
+	| { type: 'append'; defaultValue: Schema }
+	| { type: 'replace'; defaultValue: Schema; index: number }
+	| { type: 'remove'; index: number }
+	| { type: 'reorder'; from: number; to: number };
 
 export function isFieldElement(element: unknown): element is FieldElement {
 	return (
@@ -194,44 +189,38 @@ export function transform(
 	return result;
 }
 
-export function getControlCommand<
-	Action extends keyof ControlAction,
-	Payload extends ControlAction[Action],
->(name: string, action: Action, payload: Payload): [string, string] {
-	return ['__conform__', [name, action, JSON.stringify(payload)].join('::')];
+export function serializeListCommand<Schema>(
+	name: string,
+	{ type, ...payload }: ListCommand<Schema>,
+): [string, string] {
+	return ['__conform__', [name, type, JSON.stringify(payload)].join('::')];
 }
 
-export function applyControlCommand<
-	Type,
-	Action extends keyof ControlAction<Type>,
-	Payload extends ControlAction<Type>[Action],
->(list: Array<Type>, action: Action | string, payload: Payload): Array<Type> {
-	switch (action) {
+export function applyListCommand<Type>(
+	list: Array<Type>,
+	command: ListCommand<Type>,
+): Array<Type> {
+	switch (command.type) {
 		case 'prepend': {
-			const { defaultValue } = payload as ControlAction<Type>['prepend'];
-			list.unshift(defaultValue);
+			list.unshift(command.defaultValue);
 			break;
 		}
 		case 'append': {
-			const { defaultValue } = payload as ControlAction<Type>['append'];
-			list.push(defaultValue);
+			list.push(command.defaultValue);
 			break;
 		}
 		case 'replace': {
-			const { defaultValue, index } = payload as ControlAction<Type>['replace'];
-			list.splice(index, 1, defaultValue);
+			list.splice(command.index, 1, command.defaultValue);
 			break;
 		}
 		case 'remove':
-			const { index } = payload as ControlAction<Type>['remove'];
-			list.splice(index, 1);
+			list.splice(command.index, 1);
 			break;
 		case 'reorder':
-			const { from, to } = payload as ControlAction<Type>['reorder'];
-			list.splice(to, 0, ...list.splice(from, 1));
+			list.splice(command.to, 0, ...list.splice(command.from, 1));
 			break;
 		default:
-			throw new Error('Invalid action found');
+			throw new Error('Invalid list command');
 	}
 
 	return list;
@@ -256,7 +245,7 @@ export function parse(
 				);
 			}
 
-			const [name, action, json] = command.split('::');
+			const [name, type, json] = command.split('::');
 
 			let list: any = value;
 
@@ -272,7 +261,10 @@ export function parse(
 				throw new Error('');
 			}
 
-			applyControlCommand(list, action, JSON.parse(json));
+			applyListCommand(list, {
+				...JSON.parse(json),
+				type: type as any,
+			});
 		} catch (e) {
 			return {
 				state: 'rejected',

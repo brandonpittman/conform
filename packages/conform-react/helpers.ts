@@ -6,9 +6,9 @@ import {
 } from 'react';
 
 export function input<
-	Type extends string | number | Date | boolean | undefined,
+	Schema extends string | number | Date | boolean | undefined,
 >(
-	props: FieldProps<Type>,
+	props: FieldProps<Schema>,
 	{ type, value }: { type?: string; value?: string } = {},
 ): InputHTMLAttributes<HTMLInputElement> {
 	const isCheckboxOrRadio = type === 'checkbox' || type === 'radio';
@@ -36,8 +36,8 @@ export function input<
 	return attributes;
 }
 
-export function select<T extends any>(
-	props: FieldProps<T>,
+export function select<Schema>(
+	props: FieldProps<Schema>,
 ): SelectHTMLAttributes<HTMLSelectElement> {
 	return {
 		name: props.name,
@@ -52,8 +52,8 @@ export function select<T extends any>(
 	};
 }
 
-export function textarea<T extends string | undefined>(
-	props: FieldProps<T>,
+export function textarea<Schema extends string | undefined>(
+	props: FieldProps<Schema>,
 ): TextareaHTMLAttributes<HTMLTextAreaElement> {
 	return {
 		name: props.name,

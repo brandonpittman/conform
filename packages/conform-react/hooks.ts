@@ -1,11 +1,11 @@
 import {
 	type FieldProps,
-	type FieldsetData,
 	type FieldsetConfig,
+	type SchemaLike,
 	isFieldElement,
 	getKey,
-	getControlCommand,
-	applyControlCommand,
+	serializeListCommand,
+	applyListCommand,
 } from '@conform-to/dom';
 import {
 	type ButtonHTMLAttributes,
@@ -182,12 +182,12 @@ interface FieldsetProps {
 	form?: string;
 }
 
-export function useFieldset<Type extends Record<string, any>>(
-	config: FieldsetConfig<Type> = {},
-): [FieldsetProps, { [Key in keyof Type]-?: FieldProps<Type[Key]> }] {
+export function useFieldset<Schema extends Record<string, any>>(
+	config: FieldsetConfig<Schema> = {},
+): [FieldsetProps, { [Key in keyof Schema]-?: FieldProps<Schema[Key]> }] {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const [errorMessage, setErrorMessage] = useState<
-		FieldsetData<Record<string, any>, string> | undefined
+		SchemaLike<Record<string, any>, string> | undefined
 	>(config.error);
 
 	useEffect(() => {
@@ -277,20 +277,20 @@ export function useFieldset<Type extends Record<string, any>>(
 
 				return props;
 			},
-		}) as { [Key in keyof Type]-?: FieldProps<Type[Key]> },
+		}) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> },
 	];
 }
 
-interface FieldListControl<T> {
+interface FieldListControl<Schema> {
 	prepend(
-		defaultValue?: FieldsetData<T, string>,
+		defaultValue?: SchemaLike<Schema, string>,
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 	append(
-		defaultValue?: FieldsetData<T, string>,
+		defaultValue?: SchemaLike<Schema, string>,
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 	replace(
 		index: number,
-		defaultValue: FieldsetData<T, string>,
+		defaultValue: SchemaLike<Schema, string>,
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 	remove(index: number): ButtonHTMLAttributes<HTMLButtonElement>;
 	reorder(
@@ -299,44 +299,33 @@ interface FieldListControl<T> {
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 }
 
-export function useFieldList<Payload>(): [
-	Array<{ key: string }>,
-	FieldListControl<Payload>,
-];
-export function useFieldList<Payload>(
-	props: FieldProps<Array<Payload>>,
-): [
-	Array<{ key: string; props: FieldProps<Payload> }>,
-	FieldListControl<Payload>,
-];
 export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 	Array<{
 		key: string;
-		props?: FieldProps<Payload>;
+		props: FieldProps<Payload>;
 	}>,
 	FieldListControl<Payload>,
 ] {
 	const [entries, setEntries] = useState<
-		Array<[string, FieldsetData<Payload, string> | undefined]>
+		Array<[string, SchemaLike<Payload, string> | undefined]>
 	>(() => Object.entries(props?.defaultValue ?? [undefined]));
-	const list = entries.map<{ key: string; props?: FieldProps<Payload> }>(
+	const list = entries.map<{ key: string; props: FieldProps<Payload> }>(
 		([key, defaultValue], index) => ({
 			key: `${key}`,
-			props: props
-				? {
-						...props,
-						name: `${props.name}[${index}]`,
-						defaultValue: defaultValue ?? props.defaultValue?.[index],
-						error: props.error?.[index],
-						multiple: false,
-				  }
-				: undefined,
+			props: {
+				...props,
+				name: props?.name ? `${props.name}[${index}]` : '',
+				defaultValue: defaultValue ?? props?.defaultValue?.[index],
+				error: props?.error?.[index],
+				multiple: false,
+			},
 		}),
 	);
 	const control: FieldListControl<Payload> = {
 		prepend(defaultValue) {
 			const [name, value] = props?.name
-				? getControlCommand(props.name, 'prepend', {
+				? serializeListCommand(props.name, {
+						type: 'prepend',
 						defaultValue,
 				  })
 				: [];
@@ -347,7 +336,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
-						applyControlCommand([...entries], 'prepend', {
+						applyListCommand([...entries], {
+							type: 'prepend',
 							defaultValue: [`${Date.now()}`, defaultValue],
 						}),
 					);
@@ -357,7 +347,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 		},
 		append(defaultValue) {
 			const [name, value] = props?.name
-				? getControlCommand(props.name, 'append', {
+				? serializeListCommand(props.name, {
+						type: 'append',
 						defaultValue,
 				  })
 				: [];
@@ -368,7 +359,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
-						applyControlCommand([...entries], 'append', {
+						applyListCommand([...entries], {
+							type: 'append',
 							defaultValue: [`${Date.now()}`, defaultValue],
 						}),
 					);
@@ -378,7 +370,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 		},
 		replace(index, defaultValue) {
 			const [name, value] = props?.name
-				? getControlCommand(props.name, 'replace', {
+				? serializeListCommand(props.name, {
+						type: 'replace',
 						index,
 						defaultValue,
 				  })
@@ -390,7 +383,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
-						applyControlCommand([...entries], 'replace', {
+						applyListCommand([...entries], {
+							type: 'replace',
 							defaultValue: [`${Date.now()}`, defaultValue],
 							index,
 						}),
@@ -401,7 +395,10 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 		},
 		remove(index) {
 			const [name, value] = props?.name
-				? getControlCommand(props.name, 'remove', { index })
+				? serializeListCommand(props.name, {
+						type: 'remove',
+						index,
+				  })
 				: [];
 
 			return {
@@ -410,7 +407,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
-						applyControlCommand([...entries], 'remove', {
+						applyListCommand([...entries], {
+							type: 'remove',
 							index,
 						}),
 					);
@@ -420,7 +418,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 		},
 		reorder(fromIndex, toIndex) {
 			const [name, value] = props?.name
-				? getControlCommand(props.name, 'reorder', {
+				? serializeListCommand(props.name, {
+						type: 'reorder',
 						from: fromIndex,
 						to: toIndex,
 				  })
@@ -433,7 +432,8 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				onClick(e) {
 					if (fromIndex !== toIndex) {
 						setEntries((entries) =>
-							applyControlCommand([...entries], 'reorder', {
+							applyListCommand([...entries], {
+								type: 'reorder',
 								from: fromIndex,
 								to: toIndex,
 							}),
@@ -460,8 +460,10 @@ interface InputControl {
 	onBlur: () => void;
 }
 
-export function useShadowInput<T extends string | number | Date | undefined>(
-	field?: Pick<FieldProps<T>, 'defaultValue' | 'required'>,
+export function useShadowInput<
+	Schema extends string | number | Date | undefined,
+>(
+	field?: Pick<FieldProps<Schema>, 'defaultValue' | 'required'>,
 ): [RefObject<HTMLInputElement>, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
 	const [value, setValue] = useState<string>(field?.defaultValue ?? '');

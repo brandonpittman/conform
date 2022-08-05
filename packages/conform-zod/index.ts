@@ -1,7 +1,7 @@
 import {
 	type Constraint,
 	type Submission,
-	type FieldsetData,
+	type SchemaLike,
 	type FieldsetConstraint,
 	type FormValidate,
 	parse as baseParse,
@@ -11,10 +11,10 @@ import {
 } from '@conform-to/dom';
 import * as z from 'zod';
 
-export function parse<T extends Record<string, unknown>>(
+export function parse<Schema extends Record<string, unknown>>(
 	payload: FormData | URLSearchParams,
-	schema: z.ZodType<T>,
-): Submission<T> {
+	schema: z.ZodType<Schema>,
+): Submission<Schema> {
 	const submission = baseParse(payload);
 	const result = schema.safeParse(submission.form.value);
 
@@ -43,15 +43,15 @@ export function parse<T extends Record<string, unknown>>(
 					...submission.form.error,
 					...(transform(
 						result.error.errors.map((e) => [getName(e.path), e.message]),
-					) as FieldsetData<T, string>),
+					) as SchemaLike<Schema, string>),
 				},
 			},
 		};
 	}
 }
 
-export function resolve<T extends Record<string, any>>(
-	schema: z.ZodType<T>,
+export function resolve<Schema extends Record<string, any>>(
+	schema: z.ZodType<Schema>,
 ): FormValidate {
 	function validate(form: HTMLFormElement) {
 		const data = new FormData(form);
@@ -70,47 +70,47 @@ export function resolve<T extends Record<string, any>>(
 	return validate;
 }
 
-export function getConstraint<T extends Record<string, any>>(
-	schema: z.ZodType<T>,
-): FieldsetConstraint<T> {
+export function getConstraint<Schema extends Record<string, any>>(
+	schema: z.ZodType<Schema>,
+): FieldsetConstraint<Schema> {
 	function getSchemaShape<T extends Record<string, any>>(
-		schema: z.ZodType<T>,
+		def: z.ZodType<T>,
 	): z.ZodRawShape | null {
-		if (schema instanceof z.ZodObject) {
-			return schema.shape;
-		} else if (schema instanceof z.ZodEffects) {
-			return getSchemaShape(schema.innerType());
-		} else if (schema instanceof z.ZodOptional) {
-			return getSchemaShape(schema.unwrap());
+		if (def instanceof z.ZodObject) {
+			return def.shape;
+		} else if (def instanceof z.ZodEffects) {
+			return getSchemaShape(def.innerType());
+		} else if (def instanceof z.ZodOptional) {
+			return getSchemaShape(def.unwrap());
 		}
 
 		return null;
 	}
 
-	function inferConstraint<T>(schema: z.ZodType<T>): Constraint {
+	function inferConstraint<Schema>(def: z.ZodType<Schema>): Constraint {
 		const constraint: Constraint = {
 			required: true,
 		};
 
-		if (schema instanceof z.ZodEffects) {
-			return inferConstraint(schema.innerType());
-		} else if (schema instanceof z.ZodOptional) {
+		if (def instanceof z.ZodEffects) {
+			return inferConstraint(def.innerType());
+		} else if (def instanceof z.ZodOptional) {
 			return {
-				...inferConstraint(schema.unwrap()),
+				...inferConstraint(def.unwrap()),
 				required: false,
 			};
-		} else if (schema instanceof z.ZodDefault) {
+		} else if (def instanceof z.ZodDefault) {
 			return {
-				...inferConstraint(schema.removeDefault()),
+				...inferConstraint(def.removeDefault()),
 				required: false,
 			};
-		} else if (schema instanceof z.ZodArray) {
+		} else if (def instanceof z.ZodArray) {
 			return {
-				...inferConstraint(schema.element),
+				...inferConstraint(def.element),
 				multiple: true,
 			};
-		} else if (schema instanceof z.ZodString) {
-			for (let check of schema._def.checks) {
+		} else if (def instanceof z.ZodString) {
+			for (let check of def._def.checks) {
 				switch (check.kind) {
 					case 'min':
 						if (!constraint.minLength || constraint.minLength < check.value) {
@@ -129,8 +129,8 @@ export function getConstraint<T extends Record<string, any>>(
 						break;
 				}
 			}
-		} else if (schema instanceof z.ZodNumber) {
-			for (let check of schema._def.checks) {
+		} else if (def instanceof z.ZodNumber) {
+			for (let check of def._def.checks) {
 				switch (check.kind) {
 					case 'min':
 						if (!constraint.min || constraint.min < check.value) {
@@ -144,8 +144,8 @@ export function getConstraint<T extends Record<string, any>>(
 						break;
 				}
 			}
-		} else if (schema instanceof z.ZodEnum) {
-			constraint.pattern = schema.options
+		} else if (def instanceof z.ZodEnum) {
+			constraint.pattern = def.options
 				.map((option: string) =>
 					// To escape unsafe characters on regex
 					option.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&').replace(/-/g, '\\x2d'),

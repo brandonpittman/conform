@@ -1,9 +1,10 @@
 export {
 	type FieldsetConfig,
+	type FieldsetConstraint,
 	type FieldElement,
 	type FieldProps,
-	type FieldsetData,
 	type FormState,
+	type FormValidate,
 	type Submission,
 	parse,
 	isFieldElement,
