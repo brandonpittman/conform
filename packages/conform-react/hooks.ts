@@ -11,12 +11,10 @@ import {
 	type ButtonHTMLAttributes,
 	type FormHTMLAttributes,
 	type RefObject,
-	type ReactElement,
 	useRef,
 	useState,
 	useEffect,
 	useMemo,
-	createElement,
 } from 'react';
 
 export interface FormConfig {
@@ -416,49 +414,22 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 
 interface InputControl {
 	value: string;
+	required?: boolean;
 	onChange: (value: string) => void;
 	onBlur: () => void;
 }
 
-export function useControlledInput<
-	T extends string | number | Date | undefined,
->(field: FieldProps<T>): [ReactElement, InputControl] {
+export function useShadowInput<T extends string | number | Date | undefined>(
+	field?: Pick<FieldProps<T>, 'defaultValue' | 'required'>,
+): [RefObject<HTMLInputElement>, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
-	const input = useMemo(
-		() =>
-			createElement('input', {
-				ref,
-				name: field.name,
-				form: field.form,
-				defaultValue: field.defaultValue,
-				required: field.required,
-				minLength: field.minLength,
-				maxLength: field.maxLength,
-				min: field.min,
-				max: field.max,
-				step: field.step,
-				pattern: field.pattern,
-				hidden: true,
-				'aria-hidden': true,
-			}),
-		[
-			field.name,
-			field.form,
-			field.defaultValue,
-			field.required,
-			field.minLength,
-			field.maxLength,
-			field.min,
-			field.max,
-			field.step,
-			field.pattern,
-		],
-	);
+	const [value, setValue] = useState<string>(field?.defaultValue ?? '');
 
 	return [
-		input,
+		ref,
 		{
-			value: ref.current?.value ?? `${field.defaultValue ?? ''}`,
+			value,
+			required: field?.required,
 			onChange: (value: string) => {
 				if (!ref.current) {
 					return;
@@ -466,6 +437,7 @@ export function useControlledInput<
 
 				ref.current.value = value;
 				ref.current.dispatchEvent(new InputEvent('input', { bubbles: true }));
+				setValue(value);
 			},
 			onBlur: () => {
 				ref.current?.dispatchEvent(
