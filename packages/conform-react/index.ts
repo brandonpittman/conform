@@ -1,6 +1,8 @@
 export {
 	type FieldsetConfig,
+	type FieldElement,
 	type FieldProps,
+	type FieldsetData,
 	type FormState,
 	type Submission,
 	parse,

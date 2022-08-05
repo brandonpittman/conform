@@ -167,10 +167,6 @@ export function transform(
 	const result: any = {};
 
 	for (let [key, value] of entries) {
-		if (value === '') {
-			continue;
-		}
-
 		let paths = getPaths(key);
 		let length = paths.length;
 		let lastIndex = length - 1;
@@ -191,7 +187,7 @@ export function transform(
 			// 		? pointer[key].concat(newValue)
 			// 		: [pointer[key], newValue];
 			// } else {
-			pointer[key] = newValue;
+			pointer[key] = newValue !== '' ? newValue : undefined;
 			// }
 
 			pointer = pointer[key];
