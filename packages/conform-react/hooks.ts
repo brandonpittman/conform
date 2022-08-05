@@ -9,8 +9,6 @@ import {
 } from '@conform-to/dom';
 import {
 	type ButtonHTMLAttributes,
-	type FormEvent,
-	type FormEventHandler,
 	type FormHTMLAttributes,
 	type RefObject,
 	type ReactElement,
@@ -23,33 +21,37 @@ import {
 
 export interface FormConfig {
 	/**
-	 * Decide when the error should be reported initially.
+	 * Define when the error should be reported initially.
+	 * Support "onSubmit", "onChange", "onBlur".
+	 *
 	 * Default to `onSubmit`
 	 */
 	initialReport?: 'onSubmit' | 'onChange' | 'onBlur';
 
 	/**
-	 * Native browser report will be used before hydation if it is set to `true`.
-	 * Default to `false`
+	 * Enable native validation before hydation.
 	 */
 	fallbackNative?: boolean;
 
 	/**
-	 * The form could be submitted even if there is invalid input control if it is set to `true`.
-	 * Default to `false`
+	 * Allow the form to be submitted regardless of the form validity.
 	 */
 	noValidate?: boolean;
 
 	/**
-	 *
+	 * A function to be called when the form should be (re)validated.
 	 */
 	validate?: (form: HTMLFormElement) => void;
 
 	/**
-	 * The submit handler will be triggered only when the form is valid.
-	 * Or when noValidate is set to `true`
+	 * The submit event handler of the form. It will be called
+	 * only when the form is considered valid.
 	 */
 	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
+
+	/**
+	 * The reset event handler of the form.
+	 */
 	onReset?: FormHTMLAttributes<HTMLFormElement>['onReset'];
 }
 
