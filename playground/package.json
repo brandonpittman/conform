@@ -12,13 +12,14 @@
 		"start": "remix-serve build"
 	},
 	"dependencies": {
-		"@conform-to/react": "*",
-		"@conform-to/zod": "*",
+		"@conform-to/react": "0.2.0",
+		"@conform-to/zod": "0.2.0",
 		"@remix-run/node": "^1.6.3",
 		"@remix-run/react": "^1.6.3",
 		"@remix-run/serve": "^1.6.3",
 		"react": "^18.2.0",
-		"react-dom": "^18.2.0"
+		"react-dom": "^18.2.0",
+		"zod": "^3.17.3"
 	},
 	"devDependencies": {
 		"@remix-run/dev": "^1.6.3",
