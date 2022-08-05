@@ -4,7 +4,7 @@ import {
 	type FieldsetConfig,
 	isFieldElement,
 	getKey,
-	getControlButtonProps,
+	getControlCommand,
 	applyControlCommand,
 } from '@conform-to/dom';
 import {
@@ -14,7 +14,6 @@ import {
 	useRef,
 	useState,
 	useEffect,
-	useMemo,
 } from 'react';
 
 export interface FormConfig {
@@ -300,34 +299,52 @@ interface FieldListControl<T> {
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 }
 
-export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
+export function useFieldList<Payload>(): [
+	Array<{ key: string }>,
+	FieldListControl<Payload>,
+];
+export function useFieldList<Payload>(
+	props: FieldProps<Array<Payload>>,
+): [
+	Array<{ key: string; props: FieldProps<Payload> }>,
+	FieldListControl<Payload>,
+];
+export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 	Array<{
 		key: string;
-		props: FieldProps<Payload>;
+		props?: FieldProps<Payload>;
 	}>,
 	FieldListControl<Payload>,
 ] {
 	const [entries, setEntries] = useState<
 		Array<[string, FieldsetData<Payload, string> | undefined]>
-	>(() => Object.entries(props.defaultValue ?? [undefined]));
-	const list = entries.map<{ key: string; props: FieldProps<Payload> }>(
+	>(() => Object.entries(props?.defaultValue ?? [undefined]));
+	const list = entries.map<{ key: string; props?: FieldProps<Payload> }>(
 		([key, defaultValue], index) => ({
 			key: `${key}`,
-			props: {
-				...props,
-				name: `${props.name}[${index}]`,
-				defaultValue: defaultValue ?? props.defaultValue?.[index],
-				error: props.error?.[index],
-				multiple: false,
-			},
+			props: props
+				? {
+						...props,
+						name: `${props.name}[${index}]`,
+						defaultValue: defaultValue ?? props.defaultValue?.[index],
+						error: props.error?.[index],
+						multiple: false,
+				  }
+				: undefined,
 		}),
 	);
 	const control: FieldListControl<Payload> = {
 		prepend(defaultValue) {
+			const [name, value] = props?.name
+				? getControlCommand(props.name, 'prepend', {
+						defaultValue,
+				  })
+				: [];
+
 			return {
-				...getControlButtonProps(props.name, 'prepend', {
-					defaultValue,
-				}),
+				name,
+				value,
+				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
 						applyControlCommand([...entries], 'prepend', {
@@ -339,10 +356,16 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 			};
 		},
 		append(defaultValue) {
+			const [name, value] = props?.name
+				? getControlCommand(props.name, 'append', {
+						defaultValue,
+				  })
+				: [];
+
 			return {
-				...getControlButtonProps(props.name, 'append', {
-					defaultValue,
-				}),
+				name,
+				value,
+				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
 						applyControlCommand([...entries], 'append', {
@@ -354,11 +377,17 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 			};
 		},
 		replace(index, defaultValue) {
+			const [name, value] = props?.name
+				? getControlCommand(props.name, 'replace', {
+						index,
+						defaultValue,
+				  })
+				: [];
+
 			return {
-				...getControlButtonProps(props.name, 'replace', {
-					index,
-					defaultValue,
-				}),
+				name,
+				value,
+				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
 						applyControlCommand([...entries], 'replace', {
@@ -371,8 +400,14 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 			};
 		},
 		remove(index) {
+			const [name, value] = props?.name
+				? getControlCommand(props.name, 'remove', { index })
+				: [];
+
 			return {
-				...getControlButtonProps(props.name, 'remove', { index }),
+				name,
+				value,
+				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
 						applyControlCommand([...entries], 'remove', {
@@ -384,11 +419,17 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 			};
 		},
 		reorder(fromIndex, toIndex) {
+			const [name, value] = props?.name
+				? getControlCommand(props.name, 'reorder', {
+						from: fromIndex,
+						to: toIndex,
+				  })
+				: [];
+
 			return {
-				...getControlButtonProps(props.name, 'reorder', {
-					from: fromIndex,
-					to: toIndex,
-				}),
+				name,
+				value,
+				formNoValidate: true,
 				onClick(e) {
 					if (fromIndex !== toIndex) {
 						setEntries((entries) =>
@@ -406,8 +447,8 @@ export function useFieldList<Payload>(props: FieldProps<Array<Payload>>): [
 	};
 
 	useEffect(() => {
-		setEntries(Object.entries(props.defaultValue ?? [undefined]));
-	}, [props.defaultValue]);
+		setEntries(Object.entries(props?.defaultValue ?? [undefined]));
+	}, [props?.defaultValue]);
 
 	return [list, control];
 }

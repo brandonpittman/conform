@@ -65,13 +65,6 @@ export type Submission<T extends Record<string, unknown>> =
 			form: FormState<T>;
 	  };
 
-export interface ControlButtonProps {
-	type: 'submit';
-	name: string;
-	value: string;
-	formNoValidate: boolean;
-}
-
 export interface ControlAction<T = unknown> {
 	prepend: { defaultValue: T };
 	append: { defaultValue: T };
@@ -197,16 +190,11 @@ export function transform(
 	return result;
 }
 
-export function getControlButtonProps<
+export function getControlCommand<
 	Action extends keyof ControlAction,
 	Payload extends ControlAction[Action],
->(name: string, action: Action, payload: Payload): ControlButtonProps {
-	return {
-		type: 'submit',
-		name: '__conform__',
-		value: [name, action, JSON.stringify(payload)].join('::'),
-		formNoValidate: true,
-	};
+>(name: string, action: Action, payload: Payload): [string, string] {
+	return ['__conform__', [name, action, JSON.stringify(payload)].join('::')];
 }
 
 export function applyControlCommand<
