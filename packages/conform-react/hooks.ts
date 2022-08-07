@@ -1,6 +1,5 @@
 import {
 	type FieldProps,
-	type FieldsetConfig,
 	type SchemaLike,
 	isFieldElement,
 	getKey,
@@ -176,45 +175,38 @@ export function useForm(config: FormConfig = {}): FormProps {
 	};
 }
 
-interface FieldsetProps {
-	ref: RefObject<HTMLFieldSetElement>;
-	name?: string;
-	form?: string;
-}
-
+export function useFieldset<Schema = Record<string, string>>(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
 export function useFieldset<Schema extends Record<string, any>>(
-	config: FieldsetConfig<Schema> = {},
-): [FieldsetProps, { [Key in keyof Schema]-?: FieldProps<Schema[Key]> }] {
-	const ref = useRef<HTMLFieldSetElement>(null);
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+	config: FieldProps<Schema>,
+): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
+export function useFieldset<Schema extends Record<string, any>>(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+	config: FieldProps<Schema> = {},
+): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> } {
 	const [errorMessage, setErrorMessage] = useState<
 		SchemaLike<Record<string, any>, string> | undefined
 	>(config.error);
 
 	useEffect(() => {
-		const fieldset = ref.current;
+		const anchor = ref.current;
+		const form = anchor instanceof HTMLFormElement ? anchor : anchor?.form;
 
-		if (!fieldset) {
-			console.warn(
-				'No fieldset ref found; You must pass the fieldsetProps to the fieldset element',
-			);
-			return;
-		}
-
-		if (!fieldset?.form) {
-			console.warn(
-				'No form element is linked to the fieldset; Do you forgot setting the form attribute?',
-			);
+		if (!form) {
+			console.warn('No form element is located');
 			return;
 		}
 
 		const invalidHandler = (event: Event) => {
 			const field = event.target;
 
-			if (!isFieldElement(field) || field.form !== fieldset.form) {
+			if (!isFieldElement(field) || field.form !== form) {
 				return;
 			}
 
-			const key = getKey(field.name, fieldset.name);
+			const key = getKey(field.name, config.name);
 
 			if (key) {
 				setErrorMessage((prev) => {
@@ -234,7 +226,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 			}
 		};
 		const resetHandler = (event: Event) => {
-			if (event.target !== fieldset.form) {
+			if (event.target !== form) {
 				return;
 			}
 
@@ -248,37 +240,30 @@ export function useFieldset<Schema extends Record<string, any>>(
 			document.removeEventListener('invalid', invalidHandler, true);
 			document.removeEventListener('reset', resetHandler);
 		};
-	}, []);
+	}, [ref, config.name]);
 
 	useEffect(() => {
 		setErrorMessage(config.error);
 	}, [config.error]);
 
-	return [
-		{
-			ref,
-			name: config.name,
-			form: config.form,
+	return new Proxy(config, {
+		get(target, key) {
+			if (typeof key !== 'string') {
+				return;
+			}
+
+			const constraint = target.constraint?.[key];
+			const props: FieldProps<unknown> = {
+				name: target.name ? `${target.name}.${key}` : key,
+				form: target.form,
+				defaultValue: target.defaultValue?.[key],
+				error: errorMessage?.[key] ?? target.error?.[key],
+				constraint,
+			};
+
+			return props;
 		},
-		new Proxy(config, {
-			get(target, key) {
-				if (typeof key !== 'string') {
-					return;
-				}
-
-				const constraint = target.constraint?.[key];
-				const props: FieldProps<unknown> = {
-					name: target.name ? `${target.name}.${key}` : key,
-					form: target.form,
-					defaultValue: target.defaultValue?.[key],
-					error: errorMessage?.[key] ?? target.error?.[key],
-					...constraint,
-				};
-
-				return props;
-			},
-		}) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> },
-	];
+	}) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
 }
 
 interface FieldListControl<Schema> {
@@ -317,7 +302,6 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 				name: props?.name ? `${props.name}[${index}]` : '',
 				defaultValue: defaultValue ?? props?.defaultValue?.[index],
 				error: props?.error?.[index],
-				multiple: false,
 			},
 		}),
 	);
@@ -463,7 +447,7 @@ interface InputControl {
 export function useShadowInput<
 	Schema extends string | number | Date | undefined,
 >(
-	field?: Pick<FieldProps<Schema>, 'defaultValue' | 'required'>,
+	field?: Pick<FieldProps<Schema>, 'defaultValue'>,
 ): [RefObject<HTMLInputElement>, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
 	const [value, setValue] = useState<string>(field?.defaultValue ?? '');
@@ -472,7 +456,6 @@ export function useShadowInput<
 		ref,
 		{
 			value,
-			required: field?.required,
 			onChange: (value: string) => {
 				if (!ref.current) {
 					return;

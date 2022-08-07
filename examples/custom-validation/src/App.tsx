@@ -1,9 +1,8 @@
-import { useForm, isFieldElement } from '@conform-to/react';
-import { useState } from 'react';
+import { useForm, useFieldset, isFieldElement } from '@conform-to/react';
 
 export default function SignupForm() {
-	const formProps = useForm({
-		validate: (form) => {
+	const form = useForm({
+		validate(form) {
 			for (const field of form.elements) {
 				if (!isFieldElement(field)) {
 					continue;
@@ -42,61 +41,36 @@ export default function SignupForm() {
 				}
 			}
 		},
-		onSubmit: (event) => {
+		onSubmit(event) {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
 			const data = Object.fromEntries(formData);
 
-			console.log({ data });
+			console.log(data);
 		},
 	});
-	const [emailError, setEmailError] = useState('');
-	const [passwordError, setPasswordError] = useState('');
-	const [confirmPasswordError, setConfirmPasswordError] = useState('');
+	const fieldset = useFieldset(form.ref);
 
 	return (
-		<form {...formProps}>
-			<label>
-				<div>Email</div>
-				<input
-					type="email"
-					name="email"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setEmailError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{emailError}</div>
-			</label>
-			<label>
-				<div>Password</div>
-				<input
-					type="password"
-					name="password"
-					required
-					minLength={10}
-					onInvalid={(e) => {
-						e.preventDefault();
-						setPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{passwordError}</div>
-			</label>
-			<label>
-				<div>Confirm Password</div>
-				<input
-					type="password"
-					name="confirm-password"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setConfirmPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{confirmPasswordError}</div>
-			</label>
+		<form {...form}>
+			<fieldset>
+				<label>
+					<div>Email</div>
+					<input type="email" name="email" required />
+					<div>{fieldset.email.error}</div>
+				</label>
+				<label>
+					<div>Password</div>
+					<input type="password" name="password" required minLength={10} />
+					<div>{fieldset.password.error}</div>
+				</label>
+				<label>
+					<div>Confirm Password</div>
+					<input type="password" name="confirm-password" required />
+					<div>{fieldset['confirm-password'].error}</div>
+				</label>
+			</fieldset>
 			<div>
 				<button type="submit">Login</button>
 			</div>

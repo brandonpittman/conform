@@ -1,15 +1,27 @@
-label {
-	display: block;
-	padding-top: 0.2em;
-	padding-bottom: 0.2em;
-}
-
-input[data-conform-touched]:invalid,
-select[data-conform-touched]:invalid,
-textarea[data-conform-touched]:invalid {
+input[data-conform-touched]:invalid {
 	border-color: red;
 }
 
 input + div {
 	color: red;
+}
+
+fieldset {
+	border: none;
+	padding: 10px 0;
+}
+
+ul {
+	border: 1px dotted gray;
+	list-style: none;
+	margin: 10px 0;
+	padding: 10px;
+}
+
+input {
+	margin: 2px 0;
+}
+
+input[type='checkbox'] {
+	margin: 0 10px;
 }

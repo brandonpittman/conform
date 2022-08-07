@@ -1,8 +1,8 @@
-import { useForm } from '@conform-to/react';
-import { useState } from 'react';
+import { useFieldset, useForm } from '@conform-to/react';
+import { useRef } from 'react';
 
-export default function LoginForm() {
-	const formProps = useForm({
+export default function RandomForm() {
+	const form = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -13,51 +13,30 @@ export default function LoginForm() {
 			console.log({ data });
 		},
 	});
-	const [emailError, setEmailError] = useState('');
-	const [passwordError, setPasswordError] = useState('');
 
 	return (
 		<div>
-			<form id="example" {...formProps} />
-			<label>
-				<div>Email</div>
-				<input
-					type="email"
-					name="email"
-					required
-					form="example"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setEmailError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{emailError}</div>
-			</label>
-			<label>
-				<div>Password</div>
-				<input
-					type="password"
-					name="password"
-					form="example"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{passwordError}</div>
-			</label>
-			<div>
-				<label>
-					<span>Remember me</span>
-					<input type="checkbox" name="remember-me" value="yes" />
-				</label>
-			</div>
-			<div>
-				<button type="submit" form="example">
-					Login
-				</button>
-			</div>
+			<form id="product" {...form}>
+				<input type="hidden" name="product" value="example-product" />
+			</form>
+			<AnotherDOMTree />
 		</div>
+	);
+}
+
+function AnotherDOMTree() {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { quanitiy } = useFieldset(ref);
+
+	return (
+		<fieldset form="product" ref={ref}>
+			<label>
+				<input type="number" form="product" name="quanitiy" required min={1} />
+				<div>{quanitiy.error}</div>
+			</label>
+			<button type="submit" form="product">
+				Add to cart
+			</button>
+		</fieldset>
 	);
 }

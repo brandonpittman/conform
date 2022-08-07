@@ -1,8 +1,18 @@
-import { useForm, useFieldList, parse } from '@conform-to/react';
-import { useState } from 'react';
+import { useForm, useFieldset, useFieldList, parse } from '@conform-to/react';
+import { useRef } from 'react';
 
-export default function TodoList() {
-	const formProps = useForm({
+interface Task {
+	content: string;
+	completed: boolean;
+}
+
+interface Todo {
+	title: string;
+	tasks: Task[];
+}
+
+export default function TodoForm() {
+	const form = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -13,64 +23,56 @@ export default function TodoList() {
 			console.log(submission);
 		},
 	});
-	const [tasks, control] = useFieldList();
-	const [titleError, setTitleError] = useState('');
+	const { title, tasks } = useFieldset<Todo>(form.ref);
+	const [taskList, control] = useFieldList(tasks);
 
 	return (
-		<form {...formProps}>
-			<label>
-				<div>Title</div>
-				<input
-					type="text"
-					name="title"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setTitleError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{titleError}</div>
-			</label>
-			{tasks.map((task, index) => (
-				<div key={task.key}>
-					<TaskFieldset title={`Task #${index + 1}`} name={`tasks[${index}]`} />
-					<button {...control.remove(index)}>Delete</button>
-					<button {...control.reorder(index, 0)}>Move to top</button>
-					<button {...control.replace(index, { content: '' })}>Clear</button>
+		<form {...form}>
+			<fieldset>
+				<label>
+					<div>Title</div>
+					<input type="text" name="title" required />
+					<div>{title.error}</div>
+				</label>
+				<ul>
+					{taskList.map((task, index) => (
+						<li key={task.key}>
+							<TaskFieldset
+								title={`Task #${index + 1}`}
+								name={`tasks[${index}]`}
+							/>
+							<button {...control.remove(index)}>Delete</button>
+							<button {...control.reorder(index, 0)}>Move to top</button>
+							<button {...control.replace(index, { content: '' })}>
+								Clear
+							</button>
+						</li>
+					))}
+				</ul>
+				<div>
+					<button {...control.append()}>Add task</button>
 				</div>
-			))}
-			<div>
-				<button {...control.append()}>Add task</button>
-			</div>
-			<div>
-				<button type="submit">Save</button>
-			</div>
+			</fieldset>
+			<button type="submit">Save</button>
 		</form>
 	);
 }
 
 export function TaskFieldset({ title, name }: { title: string; name: string }) {
-	const [contentError, setContentError] = useState('');
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { content, completed } = useFieldset<Task>(ref, { name });
 
 	return (
-		<fieldset>
+		<fieldset ref={ref}>
 			<label>
 				<span>{title}</span>
-				<input
-					type="text"
-					name={`${name}.content`}
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setContentError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{contentError}</div>
+				<input type="text" name={content.name} required />
+				<div>{content.error}</div>
 			</label>
 			<div>
 				<label>
 					<span>Completed</span>
-					<input type="checkbox" name={`${name}.completed`} value="yes" />
+					<input type="checkbox" name={completed.name} value="yes" />
 				</label>
 			</div>
 		</fieldset>

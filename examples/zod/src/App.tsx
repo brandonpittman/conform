@@ -1,6 +1,5 @@
-import { useForm } from '@conform-to/react';
+import { useFieldset, useForm } from '@conform-to/react';
 import { resolve, parse } from '@conform-to/zod';
-import { useState } from 'react';
 import { z } from 'zod';
 
 const schema = z
@@ -21,7 +20,7 @@ const schema = z
 	});
 
 export default function SignupForm() {
-	const formProps = useForm({
+	const form = useForm({
 		validate: resolve(schema),
 		onSubmit(event) {
 			event.preventDefault();
@@ -32,47 +31,24 @@ export default function SignupForm() {
 			console.log({ data });
 		},
 	});
-	const [emailError, setEmailError] = useState('');
-	const [passwordError, setPasswordError] = useState('');
-	const [confirmPasswordError, setConfirmPasswordError] = useState('');
+	const fieldset = useFieldset(form.ref);
 
 	return (
-		<form {...formProps}>
+		<form {...form}>
 			<label>
 				<div>Email</div>
-				<input
-					type="email"
-					name="email"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setEmailError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{emailError}</div>
+				<input type="email" name="email" />
+				<div>{fieldset.email.error}</div>
 			</label>
 			<label>
 				<div>Password</div>
-				<input
-					type="password"
-					name="password"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{passwordError}</div>
+				<input type="password" name="password" />
+				<div>{fieldset.password.error}</div>
 			</label>
 			<label>
 				<div>Confirm Password</div>
-				<input
-					type="password"
-					name="confirm-password"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setConfirmPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{confirmPasswordError}</div>
+				<input type="password" name="confirm-password" />
+				<div>{fieldset['confirm-password'].error}</div>
 			</label>
 			<div>
 				<button type="submit">Login</button>

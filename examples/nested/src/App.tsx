@@ -1,8 +1,16 @@
-import { useForm, parse } from '@conform-to/react';
-import { useState } from 'react';
+import { useForm, parse, useFieldset } from '@conform-to/react';
+
+interface Payment {
+	account: string;
+	amount: {
+		currency: string;
+		value: number;
+	};
+	reference?: string;
+}
 
 export default function PaymentForm() {
-	const formProps = useForm({
+	const form = useForm({
 		onSubmit(event) {
 			event.preventDefault();
 
@@ -12,69 +20,35 @@ export default function PaymentForm() {
 			console.log(submission);
 		},
 	});
-	const [accountError, setAccountError] = useState('');
-	const [valueError, setValueError] = useState('');
-	const [currencyError, setCurrenyError] = useState('');
-	const [referenceError, setReferenceError] = useState('');
+	const { account, amount, reference } = useFieldset<Payment>(form.ref);
+	const { currency, value } = useFieldset(form.ref, amount);
 
 	return (
-		<form {...formProps}>
+		<form {...form}>
 			<label>
 				<div>Account Number</div>
-				<input
-					type="text"
-					name="account"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setAccountError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{accountError}</div>
+				<input type="text" name={account.name} required />
+				<div>{account.error}</div>
 			</label>
 			<label>
 				<div>Amount</div>
-				<input
-					type="number"
-					name="amount.value"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setValueError(e.currentTarget.validationMessage);
-					}}
-					required
-					min={10}
-					step={0.1}
-				/>
-				<div>{valueError}</div>
+				<input type="number" name={value.name} required min={10} step={0.1} />
+				<div>{value.error}</div>
 			</label>
 			<label>
 				<div>Currency</div>
-				<select
-					name="amount.currency"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setCurrenyError(e.currentTarget.validationMessage);
-					}}
-					required
-				>
+				<select name={currency.name} required>
 					<option value="">Please select</option>
 					<option value="USD">USD</option>
 					<option value="EUR">EUR</option>
 					<option value="HKD">HKD</option>
 				</select>
-				<div>{currencyError}</div>
+				<div>{currency.error}</div>
 			</label>
 			<label>
 				<div>Reference</div>
-				<textarea
-					name="reference"
-					minLength={5}
-					onInvalid={(e) => {
-						e.preventDefault();
-						setReferenceError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{referenceError}</div>
+				<textarea name={reference.name} minLength={5} />
+				<div>{reference.error}</div>
 			</label>
 			<div>
 				<button type="submit">Transfer</button>

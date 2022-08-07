@@ -1,6 +1,5 @@
-import { useForm, useShadowInput } from '@conform-to/react';
+import { useForm, useFieldset, useShadowInput } from '@conform-to/react';
 import { TextField, Button, MenuItem, Stack } from '@mui/material';
-import { useState } from 'react';
 
 export default function ArticleForm() {
 	const formProps = useForm({
@@ -14,6 +13,7 @@ export default function ArticleForm() {
 			console.log({ data });
 		},
 	});
+	const { title, category, content } = useFieldset(formProps.ref);
 
 	/**
 	 * MUI Select is a controlled component and behaves very different from native input/select.
@@ -26,9 +26,6 @@ export default function ArticleForm() {
 	 * let you hook it up with the controlled component life cycle
 	 */
 	const [ref, control] = useShadowInput();
-	const [titleError, setTitleError] = useState('');
-	const [categoryError, setCateogryError] = useState('');
-	const [contentError, setContentError] = useState('');
 
 	return (
 		<form {...formProps}>
@@ -36,39 +33,18 @@ export default function ArticleForm() {
 				<TextField
 					label="title"
 					name="title"
-					error={Boolean(titleError)}
-					inputProps={{
-						onInvalid(e) {
-							e.preventDefault();
-							setTitleError(e.currentTarget.validationMessage);
-						},
-					}}
-					helperText={titleError}
+					error={Boolean(title.error)}
+					helperText={title.error}
 					required
 				/>
-				<input
-					ref={ref}
-					name="category"
-					onInvalid={(e) => {
-						e.preventDefault();
-						setCateogryError(e.currentTarget.validationMessage);
-					}}
-					hidden
-					required
-				/>
+				<input ref={ref} name="category" hidden required />
 				<TextField
 					label="Category"
 					value={control.value}
 					onChange={(e) => control.onChange(e.target.value)}
 					onBlur={control.onBlur}
-					error={Boolean(categoryError)}
-					helperText={categoryError}
-					inputProps={{
-						onInvalid(e) {
-							// To disable native browser report due to the required attribute
-							e.preventDefault();
-						},
-					}}
+					error={Boolean(category.error)}
+					helperText={category.error}
 					select
 					required
 				>
@@ -80,14 +56,10 @@ export default function ArticleForm() {
 				<TextField
 					label="Content"
 					name="content"
-					error={Boolean(contentError)}
-					helperText={contentError}
+					error={Boolean(content.error)}
+					helperText={content.error}
 					inputProps={{
 						minLength: 10,
-						onInvalid(e) {
-							e.preventDefault();
-							setContentError(e.currentTarget.validationMessage);
-						},
 					}}
 					required
 					multiline

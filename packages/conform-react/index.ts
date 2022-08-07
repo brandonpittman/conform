@@ -1,6 +1,5 @@
 export {
-	type FieldsetConfig,
-	type FieldsetConstraint,
+	type FieldConstraint,
 	type FieldElement,
 	type FieldProps,
 	type FormState,

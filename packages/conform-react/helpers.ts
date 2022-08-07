@@ -1,13 +1,11 @@
-import { type FieldProps } from '@conform-to/dom';
+import { type FieldProps, type Primitive } from '@conform-to/dom';
 import {
 	type InputHTMLAttributes,
 	type SelectHTMLAttributes,
 	type TextareaHTMLAttributes,
 } from 'react';
 
-export function input<
-	Schema extends string | number | Date | boolean | undefined,
->(
+export function input<Schema extends Primitive>(
 	props: FieldProps<Schema>,
 	{ type, value }: { type?: string; value?: string } = {},
 ): InputHTMLAttributes<HTMLInputElement> {
@@ -16,14 +14,14 @@ export function input<
 		type,
 		name: props.name,
 		form: props.form,
-		required: props.required,
-		minLength: props.minLength,
-		maxLength: props.maxLength,
-		min: props.min,
-		max: props.max,
-		step: props.step,
-		pattern: props.pattern,
-		multiple: props.multiple,
+		required: props.constraint?.required,
+		minLength: props.constraint?.minLength,
+		maxLength: props.constraint?.maxLength,
+		min: props.constraint?.min,
+		max: props.constraint?.max,
+		step: props.constraint?.step,
+		pattern: props.constraint?.pattern,
+		multiple: props.constraint?.multiple,
 	};
 
 	if (isCheckboxOrRadio) {
@@ -36,19 +34,19 @@ export function input<
 	return attributes;
 }
 
-export function select<Schema>(
+export function select<Schema extends Primitive | Array<Primitive>>(
 	props: FieldProps<Schema>,
 ): SelectHTMLAttributes<HTMLSelectElement> {
 	return {
 		name: props.name,
 		form: props.form,
-		defaultValue: props.multiple
+		defaultValue: props.constraint?.multiple
 			? Array.isArray(props.defaultValue)
 				? props.defaultValue
 				: []
 			: `${props.defaultValue ?? ''}`,
-		required: props.required,
-		multiple: props.multiple,
+		required: props.constraint?.required,
+		multiple: props.constraint?.multiple,
 	};
 }
 
@@ -59,8 +57,8 @@ export function textarea<Schema extends string | undefined>(
 		name: props.name,
 		form: props.form,
 		defaultValue: `${props.defaultValue ?? ''}`,
-		required: props.required,
-		minLength: props.minLength,
-		maxLength: props.maxLength,
+		required: props.constraint?.required,
+		minLength: props.constraint?.minLength,
+		maxLength: props.constraint?.maxLength,
 	};
 }

@@ -1,10 +1,11 @@
-import { FieldsetConstraint } from '@conform-to/dom';
 import {
-	type FieldsetConfig,
+	type FieldProps,
+	type FieldConstraint,
 	useFieldset,
 	conform,
 	useFieldList,
 } from '@conform-to/react';
+import { useRef } from 'react';
 import { Field } from './playground';
 
 export interface Student {
@@ -14,11 +15,12 @@ export interface Student {
 	grade: string;
 }
 
-export function StudentFieldset(config: FieldsetConfig<Student>) {
-	const [fieldsetProps, { name, remarks, grade, score }] = useFieldset(config);
+export function StudentFieldset(config: FieldProps<Student>) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { name, remarks, grade, score } = useFieldset(ref, config);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Name" error={name.error}>
 				<input {...conform.input(name, { type: 'text' })} />
 			</Field>
@@ -42,12 +44,12 @@ export interface Movie {
 	rating?: number;
 }
 
-export function MovieFieldset(config: FieldsetConfig<Movie>) {
-	const [fieldsetProps, { title, description, genres, rating }] =
-		useFieldset(config);
+export function MovieFieldset(config: FieldProps<Movie>) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { title, description, genres, rating } = useFieldset(ref, config);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Title" error={title.error}>
 				<input {...conform.input(title, { type: 'text' })} />
 			</Field>
@@ -84,12 +86,12 @@ export interface Payment {
 	verified: boolean;
 }
 
-export function PaymentFieldset(config: FieldsetConfig<Payment>) {
-	const [fieldsetProps, { account, amount, timestamp, verified }] =
-		useFieldset(config);
+export function PaymentFieldset(config: FieldProps<Payment>) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { account, amount, timestamp, verified } = useFieldset(ref, config);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Account" error={account.error}>
 				<input {...conform.input(account, { type: 'text' })} />
 			</Field>
@@ -113,11 +115,12 @@ export interface LoginForm {
 	password: string;
 }
 
-export function LoginFieldset(config: FieldsetConfig<LoginForm>) {
-	const [fieldsetProps, { email, password }] = useFieldset<LoginForm>(config);
+export function LoginFieldset(config: FieldProps<LoginForm>) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { email, password } = useFieldset(ref, config);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Email" error={email.error}>
 				<input {...conform.input(email, { type: 'email' })} />
 			</Field>
@@ -133,11 +136,12 @@ export interface Task {
 	completed: boolean;
 }
 
-export function TaskFieldset(config: FieldsetConfig<Task>) {
-	const [fieldsetProps, { content, completed }] = useFieldset<Task>(config);
+export function TaskFieldset(config: FieldProps<Task>) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { content, completed } = useFieldset(ref, config);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Content" error={content.error}>
 				<input {...conform.input(content, { type: 'text' })} />
 			</Field>
@@ -156,12 +160,13 @@ export interface Checklist {
 export function ChecklistFieldset({
 	taskConstraint,
 	...config
-}: FieldsetConfig<Checklist> & { taskConstraint: FieldsetConstraint<Task> }) {
-	const [fieldsetProps, { title, tasks }] = useFieldset(config);
+}: FieldProps<Checklist> & { taskConstraint: FieldConstraint<Task> }) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { title, tasks } = useFieldset<Checklist>(ref, config);
 	const [taskList, control] = useFieldList(tasks);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset ref={ref} form={config.form}>
 			<Field label="Title" error={title.error}>
 				<input {...conform.input(title, { type: 'text' })} />
 			</Field>

@@ -1,3 +1,13 @@
+export type Primitive =
+	| null
+	| undefined
+	| string
+	| number
+	| boolean
+	| symbol
+	| bigint
+	| Date;
+
 export type FieldElement =
 	| HTMLInputElement
 	| HTMLSelectElement
@@ -32,23 +42,23 @@ export interface FormValidate {
 	(form: HTMLFormElement): void;
 }
 
-export interface FieldProps<Schema = any> extends Constraint {
-	name: string;
+export interface FieldProps<Schema = any> {
+	name?: string;
 	defaultValue?: SchemaLike<Schema, string>;
 	error?: SchemaLike<Schema, string>;
 	form?: string;
+	constraint?: FieldConstraint<Schema>;
 }
 
-export type FieldsetConstraint<Schema> = {
-	[Key in keyof Schema]?: Constraint;
-};
-
-export interface FieldsetConfig<Schema>
-	extends Partial<
-		Pick<FieldProps<Schema>, 'name' | 'form' | 'defaultValue' | 'error'>
-	> {
-	constraint?: FieldsetConstraint<Schema>;
-}
+export type FieldConstraint<Schema> = Schema extends Primitive
+	? Constraint
+	: Schema extends Array<infer InnerType>
+	? FieldConstraint<InnerType>
+	: Schema extends { [Key in string]: any }
+	? {
+			[Key in keyof Schema]?: Constraint;
+	  }
+	: unknown;
 
 export interface FormState<Schema> {
 	value: SchemaLike<Schema, string>;

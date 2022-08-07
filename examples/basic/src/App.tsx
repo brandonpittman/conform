@@ -1,8 +1,7 @@
-import { useForm } from '@conform-to/react';
-import { useState } from 'react';
+import { useForm, useFieldset } from '@conform-to/react';
 
 export default function LoginForm() {
-	const formProps = useForm({
+	const form = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -10,39 +9,22 @@ export default function LoginForm() {
 			const formData = new FormData(event.currentTarget);
 			const data = Object.fromEntries(formData);
 
-			console.log({ data });
+			console.log(data);
 		},
 	});
-	const [emailError, setEmailError] = useState('');
-	const [passwordError, setPasswordError] = useState('');
+	const { email, password } = useFieldset(form.ref);
 
 	return (
-		<form {...formProps}>
+		<form {...form}>
 			<label>
 				<div>Email</div>
-				<input
-					type="email"
-					name="email"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setEmailError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{emailError}</div>
+				<input type="email" name="email" required />
+				<div>{email.error}</div>
 			</label>
 			<label>
 				<div>Password</div>
-				<input
-					type="password"
-					name="password"
-					required
-					onInvalid={(e) => {
-						e.preventDefault();
-						setPasswordError(e.currentTarget.validationMessage);
-					}}
-				/>
-				<div>{passwordError}</div>
+				<input type="password" name="password" required />
+				<div>{password.error}</div>
 			</label>
 			<div>
 				<label>

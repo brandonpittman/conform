@@ -1,13 +1,13 @@
 import {
-	type FieldsetConfig,
-	type FormState,
+	type FieldProps,
 	useForm,
+	useFieldset,
 	useFieldList,
 } from '@conform-to/react';
 import { parse, resolve } from '@conform-to/zod';
-import { type ActionFunction } from '@remix-run/node';
+import { type ActionArgs } from '@remix-run/node';
 import { Form, useActionData } from '@remix-run/react';
-import { useState } from 'react';
+import { useRef } from 'react';
 import { z } from 'zod';
 
 const Task = z.object({
@@ -20,7 +20,7 @@ const Todo = z.object({
 	tasks: z.array(Task),
 });
 
-export let action: ActionFunction = async ({ request }) => {
+export let action = async ({ request }: ActionArgs) => {
 	const formData = await request.formData();
 	const submission = parse(formData, Todo);
 
@@ -32,17 +32,16 @@ export let action: ActionFunction = async ({ request }) => {
 };
 
 export default function OrderForm() {
-	const formState = useActionData<FormState<z.infer<typeof Todo>>>();
+	const formState = useActionData<typeof action>();
 	const formProps = useForm({
 		initialReport: 'onBlur',
 		validate: resolve(Todo),
 	});
-	const [taskList, control] = useFieldList<z.infer<typeof Task>>({
-		name: 'tasks',
-		defaultValue: formState?.value.tasks,
-		error: formState?.error.tasks,
+	const { title, tasks } = useFieldset<z.infer<typeof Todo>>(formProps.ref, {
+		defaultValue: formState?.value,
+		error: formState?.error,
 	});
-	const [titleError, setTitleError] = useState(formState?.error.title ?? '');
+	const [taskList, control] = useFieldList(tasks);
 
 	return (
 		<Form method="post" {...formProps}>
@@ -50,25 +49,16 @@ export default function OrderForm() {
 				<label>
 					<div>Title</div>
 					<input
-						className={titleError ? 'error' : ''}
+						className={title.error ? 'error' : ''}
 						name="title"
-						defaultValue={formState?.value.title}
-						onInvalid={(e) => {
-							e.preventDefault();
-							setTitleError(e.currentTarget.validationMessage);
-						}}
+						defaultValue={title.defaultValue}
 					/>
-					<div>{titleError}</div>
+					<div>{title.error}</div>
 				</label>
 				<ul>
 					{taskList.map((task, index) => (
 						<li key={task.key}>
-							<TaskFieldset
-								title={`Task #${index + 1}`}
-								name={task.props.name}
-								defaultValue={task.props.defaultValue}
-								error={task.props.error}
-							/>
+							<TaskFieldset title={`Task #${index + 1}`} {...task.props} />
 							<button {...control.remove(index)}>Delete</button>
 							<button {...control.reorder(index, 0)}>Move to top</button>
 							<button {...control.replace(index, { content: '' })}>
@@ -89,41 +79,31 @@ export default function OrderForm() {
 function TaskFieldset({
 	title,
 	...config
-}: FieldsetConfig<z.infer<typeof Task>> & { title: string }) {
-	const [contentError, setContentError] = useState(config.error?.content ?? '');
-	const [completedError, setCompletedError] = useState(
-		config.error?.completed ?? '',
-	);
+}: FieldProps<z.infer<typeof Task>> & { title: string }) {
+	const ref = useRef<HTMLFieldSetElement>(null);
+	const { content, completed } = useFieldset<z.infer<typeof Task>>(ref, config);
 
 	return (
-		<fieldset>
+		<fieldset ref={ref}>
 			<label>
 				<div>{title}</div>
 				<input
 					type="text"
-					className={contentError ? 'error' : ''}
+					className={content.error ? 'error' : ''}
 					name={`${config.name}.content`}
 					defaultValue={config.defaultValue?.content}
-					onInvalid={(e) => {
-						e.preventDefault();
-						setContentError(e.currentTarget.validationMessage);
-					}}
 				/>
-				<div>{contentError}</div>
+				<div>{content.error}</div>
 			</label>
 			<div>
 				<label>
 					<span>Completed</span>
 					<input
 						type="checkbox"
-						className={completedError ? 'error' : ''}
+						className={completed.error ? 'error' : ''}
 						name={`${config.name}.completed`}
 						value="yes"
 						defaultChecked={config.defaultValue?.completed === 'yes'}
-						onInvalid={(e) => {
-							e.preventDefault();
-							setCompletedError(e.currentTarget.validationMessage);
-						}}
 					/>
 				</label>
 			</div>
