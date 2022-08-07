@@ -7,7 +7,7 @@
 - [useForm](#useForm)
 - [useFieldset](#useFieldset)
 - [useFieldList](#useFieldList)
-- [useControlledInput](#useControlledInput)
+- [useShadowInput](#useShadowInput)
 - [conform](#conform)
 
 ---
@@ -16,11 +16,11 @@
 
 By default, the browser calls [reportValidity()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reportValidity) on the form element when you submit the form. This checks the validity of all the fields in it and reports if there are errors through the bubbles.
 
-This hook enhances this behaviour by allowing the developers to decide the best timing to start reporting errors using the `initialReport` option. This could start as earliest as the user typing or as late as the user submit the form.
+This hook enhances the form validation behaviour in 3 parts:
 
-But, setting `initialReport` to `onSubmit` still works different from the native browser behaviour, which basically calls `reportValidity()` only at the time a submit event is received. The `useForm` hook introduces a **touched** state to each fields. It will eagerly report the validity of the field once it is touched. Any errors reported later will be updated as soon as new errors are found.
-
-Feel free to **SKIP** this if the native browser behaviour fullfills your need.
+1. It lets you hook up custom validation logic into the life cycle of the form. The form will be validated when shown and revalidated when the value of the input has been changed.
+2. It marks the input that the user touched based on the `initialReport` option. This could be as earliest as the user start typing or as late as the user submit the form.
+3. It triggers the invalid event of the corresponding input once it is marked as touched with [reportValidity()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reportValidity)
 
 ```tsx
 import { useForm } from '@conform-to/react';
@@ -28,38 +28,40 @@ import { useForm } from '@conform-to/react';
 function RandomForm() {
   const formProps = useForm({
     /**
-     * Decide when the error should be reported initially.
-     * The options are `onSubmit`, `onBlur` or `onChange`.
+     * Define when the error should be reported initially.
+     * Support "onSubmit", "onChange", "onBlur".
+     *
      * Default to `onSubmit`
      */
     initialReport: 'onBlur',
 
     /**
-     * Native browser report will be enabled before hydation
-     * if this is set to `true`. Default to `false`.
+     * Enable native validation before hydation.
      */
     fallbackNative: true,
 
     /**
-     * The form could be submitted regardless of the validity
-     * of the form if this is set to `true`. Default to
-     * `false`.
+     * Allow the form to be submitted regardless of the form validity.
      */
     noValidate: false,
 
     /**
-     * Form submit handler
-     *
-     * It will NOT be called if
-     * (1) one of the fields is invalid, and
-     * (2) noValidate is set to false
+     * A function to be called when the form should be (re)validated.
+     */
+    validate(form) {
+      // ...
+    },
+
+    /**
+     * The submit event handler of the form. It will be called
+     * only when the form is considered valid.
      */
     onSubmit(e) {
       // ...
     },
 
     /**
-     * Form reset handler
+     * The reset event handler of the form.
      */
     onReset(e) {
       // ...
@@ -88,35 +90,62 @@ It is a group of properties required to setup the form. They can also be set exp
 
 </details>
 
+<details>
+<summary>How is the `validate` function looks like?</summary>
+
+```tsx
+/**
+ * Customise form validation
+ * Fallbacks to native browser validation if not specified
+ */
+function validate(form) {
+  for (const field of form.elements) {
+    switch (field.name) {
+      case 'name': {
+        if (field.validity.valueMissing) {
+          /**
+           * Setting error message based on validity
+           */
+          field.setCustomValidity('Required');
+        } else if (field.value === 'something') {
+          /**
+           * Setting error message based on custom constraint
+           */
+          field.setCustomValidity('Please enter a valid name');
+        } else {
+          /**
+           * Clearing the error message (Important!)
+           */
+          field.setCustomValidity('');
+        }
+      }
+    }
+  }
+}
+```
+
+</details>
+
 ---
 
 ### useFieldset
 
-This hook prepares all the config you need to setup the fieldset based on the provided schema.
+This hook is a helper for configuring your fieldset:
+
+1. Defining the config in one single place. e.g. name, default value and constraint
+2. Distribute the config with the `conform` helper functions
+3. Capturing the error at the fieldset level. Removing the need to setup the invalid handler on each fields.
 
 ```tsx
 import { useFieldset } from '@conform-to/react';
 
 /**
- * Schema of the fieldset
- *
- * Defining a schema manually could be error-prone. It
- * is strongly recommended to use a schema validation
- * library with a schema resolver.
- *
- * Currently only Zod is supported and Yup support is
- * coming soon. Please check the corresponding package
- * for the setup required
+ * Consider the schema as follow:
  */
-const schema = /*
-  Assuming this to be a schema for book and it looks like this:
-
-  type Book = {
-    name: string;
-    isbn: string;
-  }
-
-*/
+type Book = {
+  name: string;
+  isbn: string;
+}
 
 function BookFieldset() {
   const [
@@ -132,7 +161,7 @@ function BookFieldset() {
       name,
       isbn,
     },
-  ] = useFieldset(schema, {
+  ] = useFieldset<Book>({
     /**
      * Name of the fieldset
      * Required only for nested fieldset.
@@ -158,6 +187,13 @@ function BookFieldset() {
     error: {
       isbn: 'Invalid ISBN',
     },
+
+    constraint: {
+      isbn: {
+        required: true,
+        pattern: '[0-9]{10,13}'
+      }
+    }
   });
 
   const {
@@ -216,75 +252,9 @@ It is a group of properties required to setup the fieldset. They can also be set
   ref={fieldsetProps.ref}
   name={fieldsetProps.name}
   form={fieldsetProps.form}
-  onInput={fieldsetProps.onInput}
-  onInvalid={fieldsetProps.onInvalid}
 >
   {/* ... */}
 </fieldset>
-```
-
-</details>
-
-<details>
-<summary>How is a schema looks like?</summary>
-
-```tsx
-import type { Schema } from '@conform-to/react';
-
-/**
- * Defining a schema manually
- */
-const bookSchema: Schema<{
-  name: string;
-  isbn: string;
-  quantity?: number;
-}> = {
-  /**
-   * Define the fields with its constraint together
-   */
-  fields: {
-    name: {
-      required: true,
-    },
-    isbn: {
-      required: true,
-      minLength: 10,
-      maxLength: 13,
-      pattern: '[0-9]{10,13}',
-    },
-    quantity: {
-      min: '0',
-    },
-  },
-
-  /**
-   * Customise validation behaviour
-   * Fallbacks to native browser validation if not specified
-   */
-  validate(fieldset) {
-    /**
-     * Lookup the field elements using the fieldset element
-     */
-    const [name] = getFieldElements(fieldset, 'name');
-
-    if (name.validity.valueMissing) {
-      /**
-       * Setting error message based on validity
-       */
-      name.setCustomValidity('Required');
-    } else if (name.value === 'something') {
-      /**
-       * Setting error message based on custom constraint
-       */
-      name.setCustomValidity('Please enter a valid name');
-    } else {
-      /**
-       * Clearing the error message (Important!)
-       */
-      name.setCustomValidity('');
-    }
-  },
-};
 ```
 
 </details>
@@ -293,21 +263,59 @@ const bookSchema: Schema<{
 
 ### useFieldList
 
-This hook is used in combination with `useFieldset` to handle array structure:
+This main job of this hook is key management.
 
 ```tsx
 import { useFieldset, useFieldList } from '@conform-to/react';
 
 /**
  * Consider the schema as follow:
- *
- * type Collection = {
- *   books: Array<{ name: string; isbn: string; }>
- * }
  */
+type Book = {
+  name: string;
+  isbn: string;
+};
+
+type Collection = {
+  books: Book[];
+};
+
+function BookList() {
+  const [bookList, control] = useFieldList();
+
+  return (
+    <div>
+      {bookList.map((book, index) => (
+        <div key={book.key}>
+          {/* To setup the fields */}
+          <input
+            name={`books[${index}].name`}
+            defaultValue={book.props.defaultValue.name}
+          />
+          <input
+            name={`books[${index}].isbn`}
+            defaultValue={book.props.defaultValue.isbn}
+          />
+
+          {/* To setup a delete button */}
+          <button {...control.remove(index)}>Delete</button>
+        </div>
+      ))}
+
+      {/* To setup a button that can append a new row with optional default value */}
+      <button {...control.append({ name: '', isbn: '' })}>add</button>
+    </div>
+  );
+}
+```
+
+This hook can also be used in combination with `useFieldset` to distribute the config:
+
+```tsx
+import { useFieldset, useFieldList } from '@conform-to/react';
 
 function CollectionForm() {
-  const [fieldsetProps, { books }] = useFieldset(collectionSchema);
+  const [fieldsetProps, { books }] = useFieldset<Collection>(collectionSchema);
   const [bookList, control] = useFieldList(books);
 
   return (
@@ -373,38 +381,35 @@ function BookFieldset({ name, form, defaultValue, error }) {
 
 ---
 
-### useControlledInput
+### useShadowInput
 
-This hooks creates a shadow input that would be used to validate against the schema. Mainly used to get around problem integrating with controlled component.
+This hook make it easy for you to use a shadow input for validation. Mainly used to get around problem integrating with controlled component.
 
 ```tsx
-import { useControlledInput } from '@conform-to/react';
+import { useShadowInput } from '@conform-to/react';
 import { Select, MenuItem } from '@mui/material';
 
-function RandomFieldset() {
-  const [fieldsetProps, { category }] = useFieldset(schema);
-  const [input, control] = useControlledInput(category);
+function MuiForm() {
+  const [ref, control] = useShadowInput();
 
   return (
-    <fieldset {...fieldsetProps}>
-      {/* Render the shadow input somewhere within the fieldset */}
-      {input}
+    <div>
+      {/* Render a shadow input somewhere */}
+      <input ref={ref} name="category" hidden required />
 
       {/* MUI Select is a controlled component */}
       <Select
         label="Category"
-        value={control.value ?? ''}
+        value={control.value}
         onChange={(e) => control.onChange(e.target.value)}
         onBlur={() => control.onBlur()}
-        error={Boolean(category.error)}
-        helperText={category.error}
       >
         <MenuItem value="">Please select</MenuItem>
         <MenuItem value="a">Category A</MenuItem>
         <MenuItem value="b">Category B</MenuItem>
         <MenuItem value="c">Category C</MenuItem>
       </TextField>
-    </fieldset>
+    </div>
   )
 }
 ```
@@ -435,10 +440,10 @@ This is equivalent to:
 
 ```tsx
 function RandomForm() {
-  const [setupFieldset, { cateogry }] = useFieldset(/* ... */);
+  const [fieldsetProps, { cateogry }] = useFieldset(/* ... */);
 
   return (
-    <fieldset {...setupFieldset}>
+    <fieldset {...fieldsetProps}>
       <input
         type="text"
         name={cateogry.name}

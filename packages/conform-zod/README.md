@@ -6,10 +6,13 @@
 
 - [resolve](#resolve)
 - [parse](#parse)
+- [getConstraint](#getConstraint)
+
+---
 
 ### resolve
 
-This resolves zod schema to a conform schema:
+This resolves zod schema to a form validator:
 
 ```tsx
 import { useFieldset } from '@conform-to/react';
@@ -18,13 +21,14 @@ import { z } from 'zod';
 
 // Define the schema with zod
 const schema = z.object({
-  email: z.string(),
-  password: z.string(),
+  // ...
 });
 
 // When used with `@conform-to/react`:
 function RandomForm() {
-  const [setupFieldset, { email, password }] = useFieldset(resolve(schema));
+  const formProps = useForm({
+    validate: resolve(schema),
+  });
 
   // ...
 }
@@ -93,4 +97,23 @@ export default function SomeRoute() {
   // to populate inital value of each fields and
   // its corresponding error
 }
+```
+
+### getConstraint
+
+This infers the constraint based on the schema definition. (Note: Best effort only)
+
+```tsx
+import { getConstraint } from '@conform-to/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  content: z.string(),
+  category: z.string().optional(),
+});
+
+const constraint = getConstraint(schema);
+
+console.log(constriant.content); // { required: true }
+console.log(constriant.category); // { required: false }
 ```
