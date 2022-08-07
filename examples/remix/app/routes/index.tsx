@@ -2,13 +2,12 @@ import {
 	type FieldsetConfig,
 	type FormState,
 	useForm,
-	useFieldset,
 	useFieldList,
-	conform,
 } from '@conform-to/react';
-import { parse, resolve, getConstraint } from '@conform-to/zod';
+import { parse, resolve } from '@conform-to/zod';
 import { type ActionFunction } from '@remix-run/node';
 import { Form, useActionData } from '@remix-run/react';
+import { useState } from 'react';
 import { z } from 'zod';
 
 const Task = z.object({
@@ -38,28 +37,38 @@ export default function OrderForm() {
 		initialReport: 'onBlur',
 		validate: resolve(Todo),
 	});
-	const [fieldsetProps, { title, tasks }] = useFieldset({
-		constraint: getConstraint(Todo),
-		defaultValue: formState?.value,
-		error: formState?.error,
+	const [taskList, control] = useFieldList<z.infer<typeof Task>>({
+		name: 'tasks',
+		defaultValue: formState?.value.tasks,
+		error: formState?.error.tasks,
 	});
-	const [taskList, control] = useFieldList(tasks);
+	const [titleError, setTitleError] = useState(formState?.error.title ?? '');
 
 	return (
 		<Form method="post" {...formProps}>
-			<fieldset {...fieldsetProps}>
+			<fieldset>
 				<label>
 					<div>Title</div>
 					<input
-						className={title.error ? 'error' : ''}
-						{...conform.input(title)}
+						className={titleError ? 'error' : ''}
+						name="title"
+						defaultValue={formState?.value.title}
+						onInvalid={(e) => {
+							e.preventDefault();
+							setTitleError(e.currentTarget.validationMessage);
+						}}
 					/>
-					<div>{title.error}</div>
+					<div>{titleError}</div>
 				</label>
 				<ul>
 					{taskList.map((task, index) => (
 						<li key={task.key}>
-							<TaskFieldset title={`Task #${index + 1}`} {...task.props} />
+							<TaskFieldset
+								title={`Task #${index + 1}`}
+								name={task.props.name}
+								defaultValue={task.props.defaultValue}
+								error={task.props.error}
+							/>
 							<button {...control.remove(index)}>Delete</button>
 							<button {...control.reorder(index, 0)}>Move to top</button>
 							<button {...control.replace(index, { content: '' })}>
@@ -81,26 +90,40 @@ function TaskFieldset({
 	title,
 	...config
 }: FieldsetConfig<z.infer<typeof Task>> & { title: string }) {
-	const [fieldsetProps, { content, completed }] = useFieldset({
-		constraint: getConstraint(Task),
-		...config,
-	});
+	const [contentError, setContentError] = useState(config.error?.content ?? '');
+	const [completedError, setCompletedError] = useState(
+		config.error?.completed ?? '',
+	);
 
 	return (
-		<fieldset {...fieldsetProps}>
+		<fieldset>
 			<label>
 				<div>{title}</div>
 				<input
-					className={content.error ? 'error' : ''}
-					{...conform.input(content, { type: 'text' })}
+					type="text"
+					className={contentError ? 'error' : ''}
+					name={`${config.name}.content`}
+					defaultValue={config.defaultValue?.content}
+					onInvalid={(e) => {
+						e.preventDefault();
+						setContentError(e.currentTarget.validationMessage);
+					}}
 				/>
-				<div>{content.error}</div>
+				<div>{contentError}</div>
 			</label>
 			<div>
 				<label>
 					<span>Completed</span>
 					<input
-						{...conform.input(completed, { type: 'checkbox', value: 'yes' })}
+						type="checkbox"
+						className={completedError ? 'error' : ''}
+						name={`${config.name}.completed`}
+						value="yes"
+						defaultChecked={config.defaultValue?.completed === 'yes'}
+						onInvalid={(e) => {
+							e.preventDefault();
+							setCompletedError(e.currentTarget.validationMessage);
+						}}
 					/>
 				</label>
 			</div>
