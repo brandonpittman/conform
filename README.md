@@ -2,9 +2,9 @@
 
 Conform is a form validation library built on top of the [Constraint Validation](https://caniuse.com/constraint-validation) API.
 
-- Progressive enhancement: It is designed based on the [specification](https://dev.w3.org/html5/spec-LC/association-of-controls-and-forms.html#constraint-validation). From reporting validity of the form to setting custom error message of each fields. If you don't like part of the solution, you can always replace it with your own one.
-- Schema-first: Define the data structure and map it to smaller individual fieldset, then compose them to make complex form. Conform aims at making easy form easy, complex form simple.
-- Framework agnostic: The DOM is the only thing it depends on. It might utilize specific features for better integration, but the core will always be based on web standard.
+- **Progressive Enhancement**: It is designed based on the [HTML specification](https://html.spec.whatwg.org/dev/form-control-infrastructure.html#the-constraint-validation-api). From validating the form to reporting error messages for each field, if you don't like part of the solution, just replace it with your own.
+- **Framework Agnostic**: The DOM is the only dependency. Conform makes use of native [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API) exclusively. You don't have to use React / Vue / Svelte to utilise this library.
+- **Flexible Setup**: It can validates fields anywhere in the dom with the help of [form attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#form). Also enables CSS pseudo-classes like `:valid` and `:invalid`, allowing flexible styling across your form without the need to manipulate the class names.
 
 ## Example
 
