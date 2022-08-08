@@ -59,13 +59,6 @@ function RandomForm() {
     onSubmit(e) {
       // ...
     },
-
-    /**
-     * The reset event handler of the form.
-     */
-    onReset(e) {
-      // ...
-    },
   });
 
   return <form {...formProps}>{/* ... */}</form>;
@@ -81,7 +74,6 @@ It is a group of properties required to setup the form. They can also be set exp
 <form
   ref={formProps.ref}
   onSubmit={formProps.onSubmit}
-  onReset={formProps.onReset}
   noValidate={formProps.noValidate}
 >
   {/* ... */}

@@ -44,17 +44,11 @@ export interface FormConfig {
 	 * only when the form is considered valid.
 	 */
 	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
-
-	/**
-	 * The reset event handler of the form.
-	 */
-	onReset?: FormHTMLAttributes<HTMLFormElement>['onReset'];
 }
 
 interface FormProps {
 	ref: RefObject<HTMLFormElement>;
 	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
-	onReset: Required<FormHTMLAttributes<HTMLFormElement>>['onReset'];
 	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
@@ -71,18 +65,19 @@ export function useForm(config: FormConfig = {}): FormProps {
 	}, []);
 
 	useEffect(() => {
-		const form = ref.current;
-
-		if (!form || config.noValidate) {
+		if (config.noValidate) {
 			return;
 		}
 
-		validate?.(form);
+		if (ref.current) {
+			validate?.(ref.current);
+		}
 
 		const handleInput = (event: Event) => {
 			const field = event.target;
+			const form = ref.current;
 
-			if (!isFieldElement(field) || field.form !== form) {
+			if (!form || !isFieldElement(field) || field.form !== form) {
 				return;
 			}
 
@@ -100,8 +95,10 @@ export function useForm(config: FormConfig = {}): FormProps {
 		};
 		const handleFocusout = (event: FocusEvent) => {
 			const field = event.target;
+			const form = ref.current;
 
 			if (
+				!form ||
 				!isFieldElement(field) ||
 				field.form !== form ||
 				config.initialReport !== 'onBlur'
@@ -112,18 +109,38 @@ export function useForm(config: FormConfig = {}): FormProps {
 			field.dataset.conformTouched = 'true';
 			field.reportValidity();
 		};
+		const handleReset = (event: Event) => {
+			const form = ref.current;
 
-		document.addEventListener('input', handleInput);
+			if (!form || event.target !== form) {
+				return;
+			}
+
+			for (const field of form.elements) {
+				if (isFieldElement(field)) {
+					delete field.dataset.conformTouched;
+				}
+			}
+
+			setTimeout(() => {
+				validate?.(form);
+			}, 0);
+		};
+
+		document.addEventListener('input', handleInput, true);
 		document.addEventListener('focusout', handleFocusout);
+		document.addEventListener('reset', handleReset);
 
 		return () => {
-			document.removeEventListener('input', handleInput);
+			document.removeEventListener('input', handleInput, true);
 			document.removeEventListener('focusout', handleFocusout);
+			document.removeEventListener('reset', handleReset);
 		};
 	}, [validate, config.initialReport, config.noValidate]);
 
 	return {
-		ref: ref,
+		ref,
+		noValidate,
 		onSubmit(event) {
 			if (!config.noValidate) {
 				const form = event.currentTarget;
@@ -152,22 +169,6 @@ export function useForm(config: FormConfig = {}): FormProps {
 
 			config.onSubmit?.(event);
 		},
-		onReset(event) {
-			const form = event.currentTarget;
-
-			for (const field of form.elements) {
-				if (isFieldElement(field)) {
-					delete field.dataset.conformTouched;
-				}
-			}
-
-			config.onReset?.(event);
-
-			setTimeout(() => {
-				validate?.(form);
-			}, 0);
-		},
-		noValidate,
 	};
 }
 
