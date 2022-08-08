@@ -94,11 +94,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 
 			for (const field of form.elements) {
 				if (isFieldElement(field) && field.dataset.conformTouched) {
-					if (field.validity.valid) {
-						field.dispatchEvent(new Event('invalid'));
-					} else {
-						field.reportValidity();
-					}
+					field.reportValidity();
 				}
 			}
 		};
@@ -199,6 +195,37 @@ export function useFieldset<Schema extends Record<string, any>>(
 			return;
 		}
 
+		const handleInput = (event: Event) => {
+			const field = event.target;
+
+			if (!isFieldElement(field) || field.form !== form) {
+				return;
+			}
+
+			setErrorMessage((prev) => {
+				let next = prev;
+
+				for (const field of form.elements) {
+					if (isFieldElement(field)) {
+						const key = getKey(field.name, config.name);
+
+						if (key) {
+							const prevMessage = next?.[key] ?? '';
+							const nextMessage = field.validationMessage;
+
+							if (prevMessage !== '' && prevMessage !== nextMessage) {
+								next = {
+									...next,
+									[key]: nextMessage,
+								};
+							}
+						}
+					}
+				}
+
+				return next;
+			});
+		};
 		const invalidHandler = (event: Event) => {
 			const field = event.target;
 
@@ -233,10 +260,12 @@ export function useFieldset<Schema extends Record<string, any>>(
 			setErrorMessage({});
 		};
 
+		document.addEventListener('input', handleInput);
 		document.addEventListener('invalid', invalidHandler, true);
 		document.addEventListener('reset', resetHandler);
 
 		return () => {
+			document.removeEventListener('input', handleInput);
 			document.removeEventListener('invalid', invalidHandler, true);
 			document.removeEventListener('reset', resetHandler);
 		};
