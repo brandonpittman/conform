@@ -9,7 +9,7 @@ Conform is a form validation library built on top of the [Constraint Validation]
 ## Example
 
 ```tsx
-import { useForm } from '@conform-to/react';
+import { useForm, useFieldset } from '@conform-to/react';
 
 export default function LoginForm() {
   const formProps = useForm({
@@ -23,36 +23,19 @@ export default function LoginForm() {
       console.log(value);
     },
   });
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const { email, password } = useFieldset(formProps.ref);
 
   return (
     <form {...formProps}>
       <label>
         <div>Email</div>
-        <input
-          type="email"
-          name="email"
-          required
-          onInvalid={(e) => {
-            e.preventDefault();
-            setEmailError(e.currentTarget.validationMessage);
-          }}
-        />
-        <div>{emailError}</div>
+        <input type="email" name="email" required />
+        <div>{email.error}</div>
       </label>
       <label>
         <div>Password</div>
-        <input
-          type="password"
-          name="password"
-          required
-          onInvalid={(e) => {
-            e.preventDefault();
-            setPasswordError(e.currentTarget.validationMessage);
-          }}
-        />
-        <div>{passwordError}</div>
+        <input type="password" name="password" required />
+        <div>{passowrd.error}</div>
       </label>
       <button type="submit">Login</button>
     </form>
@@ -60,11 +43,13 @@ export default function LoginForm() {
 }
 ```
 
-More examples can be found here: [Codesandbox](https://codesandbox.io/s/github/edmundhung/conform/tree/v0.2.0/examples/remix?file=/app/routes/search.tsx) | [Stackblitz](https://stackblitz.com/github/edmundhung/conform/tree/v0.2.0/examples/remix?file=app%2Froutes%2Fsearch.tsx)
+More examples can be found [here](examples)
 
 ## API References
 
-| Package                                     | Description                                                  | Size                                                                                                                                |
-| :------------------------------------------ | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+<!-- prettier-ignore-start -->
+| Package | Description | Size |
+| :------ | :---------- | :--- |
 | [@conform-to/react](packages/conform-react) | View adapter for [react](https://github.com/facebook/react)  | [![package size](https://img.shields.io/bundlephobia/minzip/@conform-to/react)](https://bundlephobia.com/package/@conform-to/react) |
-| [@conform-to/zod](packages/conform-zod)     | Schema resolver for [zod](https://github.com/colinhacks/zod) | [![package size](https://img.shields.io/bundlephobia/minzip/@conform-to/zod)](https://bundlephobia.com/package/@conform-to/zod)     |
+| [@conform-to/zod](packages/conform-zod) | Schema resolver for [zod](https://github.com/colinhacks/zod) | [![package size](https://img.shields.io/bundlephobia/minzip/@conform-to/zod)](https://bundlephobia.com/package/@conform-to/zod) |
+<!-- prettier-ignore-end -->

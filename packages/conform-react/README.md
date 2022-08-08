@@ -19,8 +19,8 @@ By default, the browser calls [reportValidity()](https://developer.mozilla.org/e
 This hook enhances the form validation behaviour in 3 parts:
 
 1. It lets you hook up custom validation logic into the life cycle of the form. The form will be validated when shown and revalidated when the value of the input has been changed.
-2. It marks the input that the user touched based on the `initialReport` option. This could be as earliest as the user start typing or as late as the user submit the form.
-3. It triggers the invalid event of the corresponding input once it is marked as touched with [reportValidity()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reportValidity)
+2. It marks the input that user touched based on the `initialReport` option. This could be as earliest as the user start typing or as late as the user submit the form.
+3. It reports error by triggering the `invalid` event of the corresponding input once it is touched with [reportValidity()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/reportValidity)
 
 ```tsx
 import { useForm } from '@conform-to/react';
@@ -130,14 +130,14 @@ function validate(form) {
 
 ### useFieldset
 
-This hook is a helper for configuring your fieldset:
+This hook is a helper for configuring a set of fields and monitoring its state. It lets you:
 
-1. Defining the config in one single place. e.g. name, default value and constraint
-2. Distribute the config with the `conform` helper functions
-3. Capturing the error at the fieldset level. Removing the need to setup the invalid handler on each fields.
+1. Define the config in one single place. e.g. name, default value and constraint.
+2. Distribute the config to the input control with the [conform](#conform) helper functions.
+3. Capture the error at the form/fieldset level, removing the need to setup the invalid handler on each field.
 
 ```tsx
-import { useFieldset } from '@conform-to/react';
+import { useForm, useFieldset } from '@conform-to/react';
 
 /**
  * Consider the schema as follow:
@@ -145,32 +145,18 @@ import { useFieldset } from '@conform-to/react';
 type Book = {
   name: string;
   isbn: string;
-}
+};
 
 function BookFieldset() {
-  const [
-    fieldsetProps,
+  const form = useForm();
+  const { name, isbn } = useFieldset<Book>(form.ref, {
     /**
-     * The variables `name` and `isbn` are FieldProps objects
-     * They are used to configure the field (input, select, textarea)
-     *
-     * Please check the docs of the `conform` helpers for how to
-     * use them together
-     */
-    {
-      name,
-      isbn,
-    },
-  ] = useFieldset<Book>({
-    /**
-     * Name of the fieldset
-     * Required only for nested fieldset.
+     * Name prefix for nested fieldset.
      */
     name: 'book',
 
     /**
      * Id of the form
-     * Required only if the fieldset is placed out of the form
      */
     form: 'random-form-id',
 
@@ -191,9 +177,9 @@ function BookFieldset() {
     constraint: {
       isbn: {
         required: true,
-        pattern: '[0-9]{10,13}'
-      }
-    }
+        pattern: '[0-9]{10,13}',
+      },
+    },
   });
 
   const {
@@ -225,39 +211,32 @@ function BookFieldset() {
     /**
      * Constraint of the field (required, minLength etc)
      *
-     * For example, the constraint of the isbn field could be:
+     * For example, the constraint of the isbn field would be:
      * {
      *   required: true,
      *   pattern: '[0-9]{10,13}'
      * }
      */
-    ...constraint,
+    constraint,
   } = isbn;
 
-  return (
-    <fieldset {...fieldsetProps}>
-      {/* ... */}
-    </fieldset>)
-  );
+  return <form {...form}>{/* ... */}</form>;
 }
 ```
 
-<details>
-  <summary>What is `fieldsetProps`?</summary>
+If you have no direct access to the form ref, you can also pass a fieldset ref.
 
-It is a group of properties required to setup the fieldset. They can also be set explicitly as shown below:
+```ts
+import { useFieldset } from '@conform-to/react';
+import { useRef } from 'react';
 
-```tsx
-<fieldset
-  ref={fieldsetProps.ref}
-  name={fieldsetProps.name}
-  form={fieldsetProps.form}
->
-  {/* ... */}
-</fieldset>
+function Fieldset() {
+  const ref = useRef();
+  const fieldset = useFieldset(ref);
+
+  return <fieldset ref={ref}>{/* ... */}</fieldset>;
+}
 ```
-
-</details>
 
 ---
 
@@ -313,13 +292,15 @@ This hook can also be used in combination with `useFieldset` to distribute the c
 
 ```tsx
 import { useFieldset, useFieldList } from '@conform-to/react';
+import { useRef } from 'react';
 
 function CollectionForm() {
-  const [fieldsetProps, { books }] = useFieldset<Collection>(collectionSchema);
+  const form = useForm();
+  const { books } = useFieldset<Collection>(form.ref);
   const [bookList, control] = useFieldList(books);
 
   return (
-    <fieldset {...fieldsetProps}>
+    <form {...form}>
       {bookList.map((book, index) => (
         <div key={book.key}>
           {/* `book.props` is a FieldProps object similar to `books` */}
@@ -332,7 +313,7 @@ function CollectionForm() {
 
       {/* To setup a button that can append a new row */}
       <button {...control.append()}>add</button>
-    </fieldset>
+    </form>
   );
 }
 
@@ -342,7 +323,8 @@ function CollectionForm() {
  * options with the component props instead
  */
 function BookFieldset({ name, form, defaultValue, error }) {
-  const [fieldsetProps, { name, isbn }] = useFieldset(bookSchema, {
+  const ref = useRef();
+  const { name, isbn } = useFieldset(ref, {
     name,
     form,
     defaultValue,
@@ -350,7 +332,7 @@ function BookFieldset({ name, form, defaultValue, error }) {
   });
 
   return (
-    <fieldset {...fieldsetProps}>
+    <fieldset ref={ref}>
       {/* ... */}
     </fieldset>
   );
@@ -421,13 +403,15 @@ function MuiForm() {
 It provides several helpers to setup a native input field quickly:
 
 ```tsx
-import { conform } from '@conform-to/react';
+import { useFieldset, conform } from '@conform-to/react';
+import { useRef } from 'react';
 
 function RandomForm() {
-  const [setupFieldset, { cateogry }] = useFieldset(/* ... */);
+  const ref = useRef();
+  const { cateogry } = useFieldset(ref);
 
   return (
-    <fieldset {...setupFieldset}>
+    <fieldset ref={ref}>
       <input {...conform.input(cateogry, { type: 'text' })} />
       <textarea {...conform.textarea(cateogry)} />
       <select {...conform.select(cateogry)}>{/* ... */}</select>
@@ -440,10 +424,11 @@ This is equivalent to:
 
 ```tsx
 function RandomForm() {
-  const [fieldsetProps, { cateogry }] = useFieldset(/* ... */);
+  const ref = useRef();
+  const { cateogry } = useFieldset(ref);
 
   return (
-    <fieldset {...fieldsetProps}>
+    <fieldset ref={ref}>
       <input
         type="text"
         name={cateogry.name}
