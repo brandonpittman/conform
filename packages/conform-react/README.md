@@ -7,7 +7,7 @@
 - [useForm](#useForm)
 - [useFieldset](#useFieldset)
 - [useFieldList](#useFieldList)
-- [useShadowInput](#useShadowInput)
+- [useInputControl](#useInputControl)
 - [conform](#conform)
 
 ---
@@ -355,28 +355,28 @@ function BookFieldset({ name, form, defaultValue, error }) {
 
 ---
 
-### useShadowInput
+### useInputControl
 
-This hook make it easy for you to use a shadow input for validation. Mainly used to get around problem integrating with controlled component.
+This lets you hook up a shadow input for validation. This is particular useful when integrating with controlled component.
 
 ```tsx
-import { useShadowInput } from '@conform-to/react';
+import { useInputControl } from '@conform-to/react';
 import { Select, MenuItem } from '@mui/material';
 
 function MuiForm() {
-  const [ref, control] = useShadowInput();
+  const [inputProps, control] = useInputControl();
 
   return (
     <div>
       {/* Render a shadow input somewhere */}
-      <input ref={ref} name="category" hidden required />
+      <input {...inputProps} name="category" required />
 
       {/* MUI Select is a controlled component */}
       <Select
         label="Category"
         value={control.value}
-        onChange={(e) => control.onChange(e.target.value)}
-        onBlur={() => control.onBlur()}
+        onChange={control.onChange}
+        onBlur={control.onBlur}
       >
         <MenuItem value="">Please select</MenuItem>
         <MenuItem value="a">Category A</MenuItem>

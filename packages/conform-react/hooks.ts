@@ -1,4 +1,5 @@
 import {
+	type FieldElement,
 	type FieldProps,
 	type SchemaLike,
 	isFieldElement,
@@ -7,13 +8,15 @@ import {
 	applyListCommand,
 } from '@conform-to/dom';
 import {
-	type ButtonHTMLAttributes,
-	type FormHTMLAttributes,
+	type ChangeEvent,
+	type DOMAttributes,
+	type FormEvent,
 	type RefObject,
 	useRef,
 	useState,
 	useEffect,
 } from 'react';
+import { input } from './helpers';
 
 export interface FormConfig {
 	/**
@@ -43,13 +46,13 @@ export interface FormConfig {
 	 * The submit event handler of the form. It will be called
 	 * only when the form is considered valid.
 	 */
-	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
+	onSubmit?: DOMAttributes<HTMLFormElement>['onSubmit'];
 }
 
 interface FormProps {
 	ref: RefObject<HTMLFormElement>;
-	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
-	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
+	onSubmit: Required<DOMAttributes<HTMLFormElement>>['onSubmit'];
+	noValidate: Required<DOMAttributes<HTMLFormElement>>['noValidate'];
 }
 
 export function useForm(config: FormConfig = {}): FormProps {
@@ -296,22 +299,19 @@ export function useFieldset<Schema extends Record<string, any>>(
 	}) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
 }
 
-interface FieldListControl<Schema> {
+interface ListControl<Schema> {
 	prepend(
 		defaultValue?: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
+	): DOMAttributes<HTMLButtonElement>;
 	append(
 		defaultValue?: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
+	): DOMAttributes<HTMLButtonElement>;
 	replace(
 		index: number,
 		defaultValue: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
-	remove(index: number): ButtonHTMLAttributes<HTMLButtonElement>;
-	reorder(
-		fromIndex: number,
-		toIndex: number,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
+	): DOMAttributes<HTMLButtonElement>;
+	remove(index: number): DOMAttributes<HTMLButtonElement>;
+	reorder(fromIndex: number, toIndex: number): DOMAttributes<HTMLButtonElement>;
 }
 
 export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
@@ -319,7 +319,7 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 		key: string;
 		props: FieldProps<Payload>;
 	}>,
-	FieldListControl<Payload>,
+	ListControl<Payload>,
 ] {
 	const [entries, setEntries] = useState<
 		Array<[string, SchemaLike<Payload, string> | undefined]>
@@ -335,7 +335,7 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 			},
 		}),
 	);
-	const control: FieldListControl<Payload> = {
+	const control: ListControl<Payload> = {
 		prepend(defaultValue) {
 			const [name, value] = props?.name
 				? serializeListCommand(props.name, {
@@ -467,39 +467,54 @@ export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
 	return [list, control];
 }
 
-interface InputControl {
-	value: string;
-	required?: boolean;
-	onChange: (value: string) => void;
-	onBlur: () => void;
+interface InputProps extends DOMAttributes<HTMLInputElement> {
+	ref: RefObject<HTMLInputElement>;
 }
 
-export function useShadowInput<
+interface InputControl {
+	value: string;
+	onChange: (eventOrvalue: ChangeEvent<FieldElement> | string) => void;
+	onBlur: () => void;
+	onInvalid: (event: FormEvent<FieldElement>) => void;
+}
+
+export function useInputControl<
 	Schema extends string | number | Date | undefined,
->(
-	field?: Pick<FieldProps<Schema>, 'defaultValue'>,
-): [RefObject<HTMLInputElement>, InputControl] {
+>(field?: FieldProps<Schema>): [InputProps, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
 	const [value, setValue] = useState<string>(field?.defaultValue ?? '');
+	const handleChange: InputControl['onChange'] = (eventOrvalue) => {
+		if (!ref.current) {
+			return;
+		}
+
+		const value =
+			typeof eventOrvalue === 'string'
+				? eventOrvalue
+				: eventOrvalue.target.value;
+
+		ref.current.value = value;
+		ref.current.dispatchEvent(new InputEvent('input', { bubbles: true }));
+		setValue(value);
+	};
+	const handleBlur: InputControl['onBlur'] = () => {
+		ref.current?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+	};
+	const handleInvalid: InputControl['onInvalid'] = (event) => {
+		event.preventDefault();
+	};
 
 	return [
-		ref,
+		{
+			ref,
+			hidden: true,
+			...input(field ?? {}, { type: 'text' }),
+		},
 		{
 			value,
-			onChange: (value: string) => {
-				if (!ref.current) {
-					return;
-				}
-
-				ref.current.value = value;
-				ref.current.dispatchEvent(new InputEvent('input', { bubbles: true }));
-				setValue(value);
-			},
-			onBlur: () => {
-				ref.current?.dispatchEvent(
-					new FocusEvent('focusout', { bubbles: true }),
-				);
-			},
+			onChange: handleChange,
+			onBlur: handleBlur,
+			onInvalid: handleInvalid,
 		},
 	];
 }
