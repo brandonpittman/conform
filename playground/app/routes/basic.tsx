@@ -166,7 +166,7 @@ export default function Basic() {
 			</Playground>
 			<Playground
 				title="Nested list"
-				description="Constructing a nested array using useFieldList"
+				description="Constructing a nested array using useListControl"
 				form="nested-list"
 			>
 				<Form id="nested-list" method="post">

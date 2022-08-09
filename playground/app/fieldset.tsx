@@ -3,7 +3,7 @@ import {
 	type FieldConstraint,
 	useFieldset,
 	conform,
-	useFieldList,
+	useListControl,
 } from '@conform-to/react';
 import { useRef } from 'react';
 import { Field } from './playground';
@@ -163,7 +163,7 @@ export function ChecklistFieldset({
 }: FieldProps<Checklist> & { taskConstraint: FieldConstraint<Task> }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { title, tasks } = useFieldset<Checklist>(ref, config);
-	const [taskList, control] = useFieldList(tasks);
+	const [taskList, control] = useListControl(tasks);
 
 	return (
 		<fieldset ref={ref} form={config.form}>

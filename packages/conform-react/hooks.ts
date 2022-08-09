@@ -314,7 +314,7 @@ interface ListControl<Schema> {
 	reorder(fromIndex: number, toIndex: number): DOMAttributes<HTMLButtonElement>;
 }
 
-export function useFieldList<Payload>(props?: FieldProps<Array<Payload>>): [
+export function useListControl<Payload>(props?: FieldProps<Array<Payload>>): [
 	Array<{
 		key: string;
 		props: FieldProps<Payload>;

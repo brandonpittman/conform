@@ -2,7 +2,7 @@ import {
 	type FieldProps,
 	useForm,
 	useFieldset,
-	useFieldList,
+	useListControl,
 } from '@conform-to/react';
 import { parse, resolve } from '@conform-to/zod';
 import { type ActionArgs } from '@remix-run/node';
@@ -41,7 +41,7 @@ export default function OrderForm() {
 		defaultValue: formState?.value,
 		error: formState?.error,
 	});
-	const [taskList, control] = useFieldList(tasks);
+	const [taskList, control] = useListControl(tasks);
 
 	return (
 		<Form method="post" {...formProps}>

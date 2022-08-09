@@ -6,7 +6,7 @@
 
 - [useForm](#useForm)
 - [useFieldset](#useFieldset)
-- [useFieldList](#useFieldList)
+- [useListControl](#useListControl)
 - [useInputControl](#useInputControl)
 - [conform](#conform)
 
@@ -232,12 +232,12 @@ function Fieldset() {
 
 ---
 
-### useFieldList
+### useListControl
 
 This main job of this hook is key management.
 
 ```tsx
-import { useFieldset, useFieldList } from '@conform-to/react';
+import { useFieldset, useListControl } from '@conform-to/react';
 
 /**
  * Consider the schema as follow:
@@ -252,7 +252,7 @@ type Collection = {
 };
 
 function BookList() {
-  const [bookList, control] = useFieldList();
+  const [bookList, control] = useListControl();
 
   return (
     <div>
@@ -283,13 +283,13 @@ function BookList() {
 This hook can also be used in combination with `useFieldset` to distribute the config:
 
 ```tsx
-import { useFieldset, useFieldList } from '@conform-to/react';
+import { useFieldset, useListControl } from '@conform-to/react';
 import { useRef } from 'react';
 
 function CollectionForm() {
   const form = useForm();
   const { books } = useFieldset<Collection>(form.ref);
-  const [bookList, control] = useFieldList(books);
+  const [bookList, control] = useListControl(books);
 
   return (
     <form {...form}>

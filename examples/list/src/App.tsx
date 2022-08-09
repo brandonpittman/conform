@@ -1,4 +1,4 @@
-import { useForm, useFieldset, useFieldList, parse } from '@conform-to/react';
+import { useForm, useFieldset, useListControl, parse } from '@conform-to/react';
 import { useRef } from 'react';
 
 interface Task {
@@ -24,7 +24,7 @@ export default function TodoForm() {
 		},
 	});
 	const { title, tasks } = useFieldset<Todo>(form.ref);
-	const [taskList, control] = useFieldList(tasks);
+	const [taskList, control] = useListControl(tasks);
 
 	return (
 		<form {...form}>
