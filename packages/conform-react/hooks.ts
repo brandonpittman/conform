@@ -8,9 +8,11 @@ import {
 	applyListCommand,
 } from '@conform-to/dom';
 import {
+	type ButtonHTMLAttributes,
 	type ChangeEvent,
-	type DOMAttributes,
+	type FormHTMLAttributes,
 	type FormEvent,
+	type InputHTMLAttributes,
 	type RefObject,
 	useRef,
 	useState,
@@ -46,13 +48,13 @@ export interface FormConfig {
 	 * The submit event handler of the form. It will be called
 	 * only when the form is considered valid.
 	 */
-	onSubmit?: DOMAttributes<HTMLFormElement>['onSubmit'];
+	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
 }
 
 interface FormProps {
 	ref: RefObject<HTMLFormElement>;
-	onSubmit: Required<DOMAttributes<HTMLFormElement>>['onSubmit'];
-	noValidate: Required<DOMAttributes<HTMLFormElement>>['noValidate'];
+	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
+	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
 export function useForm(config: FormConfig = {}): FormProps {
@@ -302,16 +304,19 @@ export function useFieldset<Schema extends Record<string, any>>(
 interface ListControl<Schema> {
 	prepend(
 		defaultValue?: SchemaLike<Schema, string>,
-	): DOMAttributes<HTMLButtonElement>;
+	): ButtonHTMLAttributes<HTMLButtonElement>;
 	append(
 		defaultValue?: SchemaLike<Schema, string>,
-	): DOMAttributes<HTMLButtonElement>;
+	): ButtonHTMLAttributes<HTMLButtonElement>;
 	replace(
 		index: number,
 		defaultValue: SchemaLike<Schema, string>,
-	): DOMAttributes<HTMLButtonElement>;
-	remove(index: number): DOMAttributes<HTMLButtonElement>;
-	reorder(fromIndex: number, toIndex: number): DOMAttributes<HTMLButtonElement>;
+	): ButtonHTMLAttributes<HTMLButtonElement>;
+	remove(index: number): ButtonHTMLAttributes<HTMLButtonElement>;
+	reorder(
+		fromIndex: number,
+		toIndex: number,
+	): ButtonHTMLAttributes<HTMLButtonElement>;
 }
 
 export function useListControl<Payload>(props?: FieldProps<Array<Payload>>): [
@@ -467,7 +472,7 @@ export function useListControl<Payload>(props?: FieldProps<Array<Payload>>): [
 	return [list, control];
 }
 
-interface InputProps extends DOMAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 	ref: RefObject<HTMLInputElement>;
 }
 
