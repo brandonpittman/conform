@@ -111,6 +111,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 				return;
 			}
 
+			validate?.(form);
 			field.dataset.conformTouched = 'true';
 			field.reportValidity();
 		};
@@ -150,6 +151,8 @@ export function useForm(config: FormConfig = {}): FormProps {
 			if (!config.noValidate) {
 				const form = event.currentTarget;
 				const nativeEvent = event.nativeEvent as SubmitEvent;
+
+				validate?.(form);
 
 				for (const field of form.elements) {
 					if (isFieldElement(field)) {
@@ -281,24 +284,27 @@ export function useFieldset<Schema extends Record<string, any>>(
 		setErrorMessage(config.error);
 	}, [config.error]);
 
-	return new Proxy(config, {
-		get(target, key) {
-			if (typeof key !== 'string') {
-				return;
-			}
+	return new Proxy(
+		{},
+		{
+			get(_target, key) {
+				if (typeof key !== 'string') {
+					return;
+				}
 
-			const constraint = target.constraint?.[key];
-			const props: FieldProps<unknown> = {
-				name: target.name ? `${target.name}.${key}` : key,
-				form: target.form,
-				defaultValue: target.defaultValue?.[key],
-				error: errorMessage?.[key] ?? target.error?.[key],
-				constraint,
-			};
+				const constraint = config.constraint?.[key];
+				const props: FieldProps<unknown> = {
+					name: config.name ? `${config.name}.${key}` : key,
+					form: config.form,
+					defaultValue: config.defaultValue?.[key],
+					error: errorMessage?.[key] ?? config.error?.[key],
+					constraint,
+				};
 
-			return props;
+				return props;
+			},
 		},
-	}) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
+	) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
 }
 
 interface ListControl<Schema> {
