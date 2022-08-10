@@ -2,7 +2,7 @@ import {
 	type Constraint,
 	type Submission,
 	type SchemaLike,
-	type FieldsetConstraint,
+	type FieldConstraint,
 	type FormValidate,
 	parse as baseParse,
 	transform,
@@ -11,7 +11,7 @@ import {
 } from '@conform-to/dom';
 import * as z from 'zod';
 
-export function parse<Schema extends Record<string, unknown>>(
+export function parse<Schema extends Record<string, any>>(
 	payload: FormData | URLSearchParams,
 	schema: z.ZodType<Schema>,
 ): Submission<Schema> {
@@ -72,7 +72,7 @@ export function resolve<Schema extends Record<string, any>>(
 
 export function getConstraint<Schema extends Record<string, any>>(
 	schema: z.ZodType<Schema>,
-): FieldsetConstraint<Schema> {
+): FieldConstraint<Schema> {
 	function getSchemaShape<T extends Record<string, any>>(
 		def: z.ZodType<T>,
 	): z.ZodRawShape | null {
