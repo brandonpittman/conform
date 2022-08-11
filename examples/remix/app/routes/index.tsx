@@ -41,7 +41,7 @@ export default function OrderForm() {
 		defaultValue: formState?.value,
 		error: formState?.error,
 	});
-	const [taskList, control] = useListControl(tasks);
+	const [taskList, control] = useListControl(formProps.ref, tasks);
 
 	return (
 		<Form method="post" {...formProps}>

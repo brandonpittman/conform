@@ -163,7 +163,7 @@ export function ChecklistFieldset({
 }: FieldProps<Checklist> & { taskConstraint: FieldConstraint<Task> }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { title, tasks } = useFieldset<Checklist>(ref, config);
-	const [taskList, control] = useListControl(tasks);
+	const [taskList, control] = useListControl(ref, tasks);
 
 	return (
 		<fieldset ref={ref} form={config.form}>

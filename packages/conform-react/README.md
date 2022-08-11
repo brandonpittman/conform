@@ -252,10 +252,11 @@ type Collection = {
 };
 
 function BookList() {
-  const [bookList, control] = useListControl();
+  const ref = useRef();
+  const [bookList, control] = useListControl(ref);
 
   return (
-    <div>
+    <fieldset ref={ref}>
       {bookList.map((book, index) => (
         <div key={book.key}>
           {/* To setup the fields */}
@@ -275,7 +276,7 @@ function BookList() {
 
       {/* To setup a button that can append a new row with optional default value */}
       <button {...control.append({ name: '', isbn: '' })}>add</button>
-    </div>
+    </fieldset>
   );
 }
 ```
@@ -289,7 +290,7 @@ import { useRef } from 'react';
 function CollectionForm() {
   const form = useForm();
   const { books } = useFieldset<Collection>(form.ref);
-  const [bookList, control] = useListControl(books);
+  const [bookList, control] = useListControl(form.ref, books);
 
   return (
     <form {...form}>

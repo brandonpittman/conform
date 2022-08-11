@@ -180,6 +180,20 @@ export function useForm(config: FormConfig = {}): FormProps {
 	};
 }
 
+function getForm(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+): HTMLFormElement | null {
+	const anchor = ref.current;
+	const form = anchor instanceof HTMLFormElement ? anchor : anchor?.form;
+
+	if (!form) {
+		console.warn('No form element is located');
+		return null;
+	}
+
+	return form;
+}
+
 export function useFieldset<Schema = Record<string, string>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
 ): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
@@ -196,18 +210,11 @@ export function useFieldset<Schema extends Record<string, any>>(
 	>(config.error);
 
 	useEffect(() => {
-		const anchor = ref.current;
-		const form = anchor instanceof HTMLFormElement ? anchor : anchor?.form;
-
-		if (!form) {
-			console.warn('No form element is located');
-			return;
-		}
-
 		const handleInput = (event: Event) => {
+			const form = getForm(ref);
 			const field = event.target;
 
-			if (!isFieldElement(field) || field.form !== form) {
+			if (!form || !isFieldElement(field) || field.form !== form) {
 				return;
 			}
 
@@ -236,9 +243,10 @@ export function useFieldset<Schema extends Record<string, any>>(
 			});
 		};
 		const invalidHandler = (event: Event) => {
+			const form = getForm(ref);
 			const field = event.target;
 
-			if (!isFieldElement(field) || field.form !== form) {
+			if (!form || !isFieldElement(field) || field.form !== form) {
 				return;
 			}
 
@@ -262,7 +270,9 @@ export function useFieldset<Schema extends Record<string, any>>(
 			}
 		};
 		const resetHandler = (event: Event) => {
-			if (event.target !== form) {
+			const form = getForm(ref);
+
+			if (!form || event.target !== form) {
 				return;
 			}
 
@@ -325,7 +335,10 @@ interface ListControl<Schema> {
 	): ButtonHTMLAttributes<HTMLButtonElement>;
 }
 
-export function useListControl<Payload>(props?: FieldProps<Array<Payload>>): [
+export function useListControl<Payload = any>(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+	props?: FieldProps<Array<Payload>>,
+): [
 	Array<{
 		key: string;
 		props: FieldProps<Payload>;
@@ -473,7 +486,23 @@ export function useListControl<Payload>(props?: FieldProps<Array<Payload>>): [
 
 	useEffect(() => {
 		setEntries(Object.entries(props?.defaultValue ?? [undefined]));
-	}, [props?.defaultValue]);
+
+		const resetHandler = (event: Event) => {
+			const form = getForm(ref);
+
+			if (!form || event.target !== form) {
+				return;
+			}
+
+			setEntries(Object.entries(props?.defaultValue ?? []));
+		};
+
+		document.addEventListener('reset', resetHandler);
+
+		return () => {
+			document.removeEventListener('reset', resetHandler);
+		};
+	}, [ref, props?.defaultValue]);
 
 	return [list, control];
 }

@@ -24,7 +24,7 @@ export default function TodoForm() {
 		},
 	});
 	const { title, tasks } = useFieldset<Todo>(form.ref);
-	const [taskList, control] = useListControl(tasks);
+	const [taskList, control] = useListControl(form.ref, tasks);
 
 	return (
 		<form {...form}>
