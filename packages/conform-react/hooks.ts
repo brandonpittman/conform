@@ -371,6 +371,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
+				form: props?.form,
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
@@ -394,6 +395,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
+				form: props?.form,
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
@@ -418,6 +420,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
+				form: props?.form,
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
@@ -442,6 +445,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
+				form: props?.form,
 				formNoValidate: true,
 				onClick(e) {
 					setEntries((entries) =>
@@ -466,6 +470,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
+				form: props?.form,
 				formNoValidate: true,
 				onClick(e) {
 					if (fromIndex !== toIndex) {
