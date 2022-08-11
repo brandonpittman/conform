@@ -7,12 +7,12 @@ import {
 	serializeListCommand,
 	applyListCommand,
 } from '@conform-to/dom';
-import React, {
-	type ButtonHTMLAttributes,
+import {
 	type ChangeEvent,
 	type FormHTMLAttributes,
 	type FormEvent,
 	type InputHTMLAttributes,
+	type MouseEvent,
 	type RefObject,
 	useRef,
 	useState,
@@ -322,7 +322,7 @@ interface ControlButtonProps {
 	value?: string;
 	form?: string;
 	formNoValidate: true;
-	onClick(event?: React.MouseEvent<HTMLButtonElement>): void;
+	onClick(event?: MouseEvent<HTMLButtonElement>): void;
 }
 
 interface ListControl<Schema> {
