@@ -26,7 +26,7 @@ const schema = z.object({
 
 // When used with `@conform-to/react`:
 function RandomForm() {
-  const formProps = useForm({
+  const formConfig = useForm({
     validate: resolve(schema),
   });
 

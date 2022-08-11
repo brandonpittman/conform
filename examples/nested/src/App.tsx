@@ -10,7 +10,7 @@ interface Payment {
 }
 
 export default function PaymentForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		onSubmit(event) {
 			event.preventDefault();
 
@@ -20,11 +20,11 @@ export default function PaymentForm() {
 			console.log(submission);
 		},
 	});
-	const { account, amount, reference } = useFieldset<Payment>(form.ref);
-	const { currency, value } = useFieldset(form.ref, amount);
+	const { account, amount, reference } = useFieldset<Payment>(formConfig.ref);
+	const { currency, value } = useFieldset(formConfig.ref, amount);
 
 	return (
-		<form {...form}>
+		<form {...formConfig}>
 			<label>
 				<div>Account Number</div>
 				<input type="text" name={account.name} required />

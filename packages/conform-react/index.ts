@@ -1,7 +1,7 @@
 export {
+	type FieldConfig,
 	type FieldConstraint,
 	type FieldElement,
-	type FieldProps,
 	type FormState,
 	type FormValidate,
 	type Submission,

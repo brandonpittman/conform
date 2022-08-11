@@ -1,7 +1,7 @@
 import { useForm, useFieldset, isFieldElement } from '@conform-to/react';
 
 export default function SignupForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		validate(form) {
 			for (const field of form.elements) {
 				if (!isFieldElement(field)) {
@@ -50,10 +50,10 @@ export default function SignupForm() {
 			console.log(data);
 		},
 	});
-	const fieldset = useFieldset(form.ref);
+	const fieldset = useFieldset(formConfig.ref);
 
 	return (
-		<form {...form}>
+		<form {...formConfig}>
 			<fieldset>
 				<label>
 					<div>Email</div>

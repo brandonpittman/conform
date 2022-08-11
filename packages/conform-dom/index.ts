@@ -42,7 +42,7 @@ export interface FormValidate {
 	(form: HTMLFormElement): void;
 }
 
-export interface FieldProps<Schema = any> {
+export interface FieldConfig<Schema = any> {
 	name?: string;
 	defaultValue?: SchemaLike<Schema, string>;
 	error?: SchemaLike<Schema, string>;

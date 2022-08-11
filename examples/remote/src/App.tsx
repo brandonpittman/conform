@@ -2,7 +2,7 @@ import { useFieldset, useForm } from '@conform-to/react';
 import { useRef } from 'react';
 
 export default function RandomForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -16,7 +16,7 @@ export default function RandomForm() {
 
 	return (
 		<div>
-			<form id="product" {...form}>
+			<form id="product" {...formConfig}>
 				<input type="hidden" name="product" value="example-product" />
 			</form>
 			<AnotherDOMTree />

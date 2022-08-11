@@ -1,4 +1,10 @@
-import { useForm, useFieldset, useListControl, parse } from '@conform-to/react';
+import {
+	type FieldConfig,
+	useForm,
+	useFieldset,
+	useListControl,
+	parse,
+} from '@conform-to/react';
 import { useRef } from 'react';
 
 interface Task {
@@ -12,7 +18,7 @@ interface Todo {
 }
 
 export default function TodoForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -23,11 +29,11 @@ export default function TodoForm() {
 			console.log(submission);
 		},
 	});
-	const { title, tasks } = useFieldset<Todo>(form.ref);
-	const [taskList, control] = useListControl(form.ref, tasks);
+	const { title, tasks } = useFieldset<Todo>(formConfig.ref);
+	const [taskList, control] = useListControl(formConfig.ref, tasks);
 
 	return (
-		<form {...form}>
+		<form {...formConfig}>
 			<fieldset>
 				<label>
 					<div>Title</div>
@@ -39,7 +45,7 @@ export default function TodoForm() {
 						<li key={task.key}>
 							<TaskFieldset
 								title={`Task #${index + 1}`}
-								name={`tasks[${index}]`}
+								name={task.config.name}
 							/>
 							<button {...control.remove(index)}>Delete</button>
 							<button {...control.reorder(index, 0)}>Move to top</button>
@@ -58,7 +64,10 @@ export default function TodoForm() {
 	);
 }
 
-export function TaskFieldset({ title, name }: { title: string; name: string }) {
+export function TaskFieldset({
+	title,
+	name,
+}: FieldConfig<Task> & { title: string }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { content, completed } = useFieldset<Task>(ref, { name });
 

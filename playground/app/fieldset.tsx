@@ -1,5 +1,5 @@
 import {
-	type FieldProps,
+	type FieldConfig,
 	type FieldConstraint,
 	useFieldset,
 	conform,
@@ -15,7 +15,7 @@ export interface Student {
 	grade: string;
 }
 
-export function StudentFieldset(config: FieldProps<Student>) {
+export function StudentFieldset(config: FieldConfig<Student>) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { name, remarks, grade, score } = useFieldset(ref, config);
 
@@ -44,7 +44,7 @@ export interface Movie {
 	rating?: number;
 }
 
-export function MovieFieldset(config: FieldProps<Movie>) {
+export function MovieFieldset(config: FieldConfig<Movie>) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { title, description, genres, rating } = useFieldset(ref, config);
 
@@ -86,7 +86,7 @@ export interface Payment {
 	verified: boolean;
 }
 
-export function PaymentFieldset(config: FieldProps<Payment>) {
+export function PaymentFieldset(config: FieldConfig<Payment>) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { account, amount, timestamp, verified } = useFieldset(ref, config);
 
@@ -115,7 +115,7 @@ export interface LoginForm {
 	password: string;
 }
 
-export function LoginFieldset(config: FieldProps<LoginForm>) {
+export function LoginFieldset(config: FieldConfig<LoginForm>) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { email, password } = useFieldset(ref, config);
 
@@ -136,7 +136,7 @@ export interface Task {
 	completed: boolean;
 }
 
-export function TaskFieldset(config: FieldProps<Task>) {
+export function TaskFieldset(config: FieldConfig<Task>) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { content, completed } = useFieldset(ref, config);
 
@@ -160,7 +160,7 @@ export interface Checklist {
 export function ChecklistFieldset({
 	taskConstraint,
 	...config
-}: FieldProps<Checklist> & { taskConstraint: FieldConstraint<Task> }) {
+}: FieldConfig<Checklist> & { taskConstraint: FieldConstraint<Task> }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { title, tasks } = useFieldset<Checklist>(ref, config);
 	const [taskList, control] = useListControl(ref, tasks);
@@ -173,7 +173,7 @@ export function ChecklistFieldset({
 			<ol>
 				{taskList.map((task, index) => (
 					<li key={task.key} className="border rounded-md p-4 mb-4">
-						<TaskFieldset constraint={taskConstraint} {...task.props} />
+						<TaskFieldset constraint={taskConstraint} {...task.config} />
 						<div className="flex flex-row gap-2">
 							<button
 								className="rounded-md border p-2 hover:border-black"

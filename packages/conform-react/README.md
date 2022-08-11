@@ -26,7 +26,7 @@ This hook enhances the form validation behaviour in 3 parts:
 import { useForm } from '@conform-to/react';
 
 function RandomForm() {
-  const formProps = useForm({
+  const formConfig = useForm({
     /**
      * Define when the error should be reported initially.
      * Support "onSubmit", "onChange", "onBlur".
@@ -61,20 +61,20 @@ function RandomForm() {
     },
   });
 
-  return <form {...formProps}>{/* ... */}</form>;
+  return <form {...formConfig}>{/* ... */}</form>;
 }
 ```
 
 <details>
-<summary>What is `formProps`?</summary>
+<summary>What is `formConfig`?</summary>
 
 It is a group of properties required to setup the form. They can also be set explicitly as shown below:
 
 ```tsx
 <form
-  ref={formProps.ref}
-  onSubmit={formProps.onSubmit}
-  noValidate={formProps.noValidate}
+  ref={formConfig.ref}
+  onSubmit={formConfig.onSubmit}
+  noValidate={formConfig.noValidate}
 >
   {/* ... */}
 </form>
@@ -140,8 +140,8 @@ type Book = {
 };
 
 function BookFieldset() {
-  const form = useForm();
-  const { name, isbn } = useFieldset<Book>(form.ref, {
+  const formConfig = useForm();
+  const { name, isbn } = useFieldset<Book>(formConfig.ref, {
     /**
      * Name prefix for nested fieldset.
      */
@@ -212,7 +212,7 @@ function BookFieldset() {
     constraint,
   } = isbn;
 
-  return <form {...form}>{/* ... */}</form>;
+  return <form {...formConfig}>{/* ... */}</form>;
 }
 ```
 
@@ -288,16 +288,16 @@ import { useFieldset, useListControl } from '@conform-to/react';
 import { useRef } from 'react';
 
 function CollectionForm() {
-  const form = useForm();
-  const { books } = useFieldset<Collection>(form.ref);
-  const [bookList, control] = useListControl(form.ref, books);
+  const formConfig = useForm();
+  const { books } = useFieldset<Collection>(formConfig.ref);
+  const [bookList, control] = useListControl(formConfig.ref, books);
 
   return (
-    <form {...form}>
+    <form {...formConfig}>
       {bookList.map((book, index) => (
         <div key={book.key}>
-          {/* `book.props` is a FieldProps object similar to `books` */}
-          <BookFieldset {...book.props}>
+          {/* `book.props` is a FieldConfig object similar to `books` */}
+          <BookFieldset {...book.config}>
 
           {/* To setup a delete button */}
           <button {...control.remove(index)}>Delete</button>

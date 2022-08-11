@@ -1,6 +1,7 @@
 import {
 	type FieldElement,
-	type FieldProps,
+	type FieldConfig,
+	type FormValidate,
 	type SchemaLike,
 	isFieldElement,
 	getKey,
@@ -20,49 +21,49 @@ import {
 } from 'react';
 import { input } from './helpers';
 
-export interface FormConfig {
-	/**
-	 * Define when the error should be reported initially.
-	 * Support "onSubmit", "onChange", "onBlur".
-	 *
-	 * Default to `onSubmit`
-	 */
-	initialReport?: 'onSubmit' | 'onChange' | 'onBlur';
-
-	/**
-	 * Enable native validation before hydation.
-	 */
-	fallbackNative?: boolean;
-
-	/**
-	 * Allow the form to be submitted regardless of the form validity.
-	 */
-	noValidate?: boolean;
-
-	/**
-	 * A function to be called when the form should be (re)validated.
-	 */
-	validate?: (form: HTMLFormElement) => void;
-
-	/**
-	 * The submit event handler of the form. It will be called
-	 * only when the form is considered valid.
-	 */
-	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
-}
-
-interface FormProps {
+interface FormConfig {
 	ref: RefObject<HTMLFormElement>;
 	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
 	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
-export function useForm(config: FormConfig = {}): FormProps {
-	const { validate } = config;
+export function useForm(
+	options: {
+		/**
+		 * Define when the error should be reported initially.
+		 * Support "onSubmit", "onChange", "onBlur".
+		 *
+		 * Default to `onSubmit`
+		 */
+		initialReport?: 'onSubmit' | 'onChange' | 'onBlur';
+
+		/**
+		 * Enable native validation before hydation.
+		 */
+		fallbackNative?: boolean;
+
+		/**
+		 * Allow the form to be submitted regardless of the form validity.
+		 */
+		noValidate?: boolean;
+
+		/**
+		 * A function to be called when the form should be (re)validated.
+		 */
+		validate?: FormValidate;
+
+		/**
+		 * The submit event handler of the form. It will be called
+		 * only when the form is considered valid.
+		 */
+		onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
+	} = {},
+): FormConfig {
+	const { validate } = options;
 
 	const ref = useRef<HTMLFormElement>(null);
 	const [noValidate, setNoValidate] = useState(
-		config.noValidate || !config.fallbackNative,
+		options.noValidate || !options.fallbackNative,
 	);
 
 	useEffect(() => {
@@ -70,7 +71,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 	}, []);
 
 	useEffect(() => {
-		if (config.noValidate) {
+		if (options.noValidate) {
 			return;
 		}
 
@@ -88,7 +89,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 
 			validate?.(form);
 
-			if (config.initialReport === 'onChange') {
+			if (options.initialReport === 'onChange') {
 				field.dataset.conformTouched = 'true';
 			}
 
@@ -106,7 +107,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 				!form ||
 				!isFieldElement(field) ||
 				field.form !== form ||
-				config.initialReport !== 'onBlur'
+				options.initialReport !== 'onBlur'
 			) {
 				return;
 			}
@@ -142,13 +143,13 @@ export function useForm(config: FormConfig = {}): FormProps {
 			document.removeEventListener('focusout', handleFocusout);
 			document.removeEventListener('reset', handleReset);
 		};
-	}, [validate, config.initialReport, config.noValidate]);
+	}, [validate, options.initialReport, options.noValidate]);
 
 	return {
 		ref,
 		noValidate,
 		onSubmit(event) {
-			if (!config.noValidate) {
+			if (!options.noValidate) {
 				const form = event.currentTarget;
 				const nativeEvent = event.nativeEvent as SubmitEvent;
 
@@ -175,7 +176,7 @@ export function useForm(config: FormConfig = {}): FormProps {
 				}
 			}
 
-			config.onSubmit?.(event);
+			options.onSubmit?.(event);
 		},
 	};
 }
@@ -196,15 +197,15 @@ function getForm(
 
 export function useFieldset<Schema = Record<string, string>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
+): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
 export function useFieldset<Schema extends Record<string, any>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config: FieldProps<Schema>,
-): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
+	config: FieldConfig<Schema>,
+): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
 export function useFieldset<Schema extends Record<string, any>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config: FieldProps<Schema> = {},
-): { [Key in keyof Schema]-?: FieldProps<Schema[Key]> } {
+	config: FieldConfig<Schema> = {},
+): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> } {
 	const [errorMessage, setErrorMessage] = useState<
 		SchemaLike<Record<string, any>, string> | undefined
 	>(config.error);
@@ -302,19 +303,16 @@ export function useFieldset<Schema extends Record<string, any>>(
 					return;
 				}
 
-				const constraint = config.constraint?.[key];
-				const props: FieldProps<unknown> = {
+				return {
 					name: config.name ? `${config.name}.${key}` : key,
 					form: config.form,
 					defaultValue: config.defaultValue?.[key],
 					error: errorMessage?.[key] ?? config.error?.[key],
-					constraint,
+					constraint: config.constraint?.[key],
 				};
-
-				return props;
 			},
 		},
-	) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
+	) as { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
 }
 
 interface ControlButtonProps {
@@ -338,32 +336,32 @@ interface ListControl<Schema> {
 
 export function useListControl<Payload = any>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	props?: FieldProps<Array<Payload>>,
+	config?: FieldConfig<Array<Payload>>,
 ): [
 	Array<{
 		key: string;
-		props: FieldProps<Payload>;
+		config: FieldConfig<Payload>;
 	}>,
 	ListControl<Payload>,
 ] {
 	const [entries, setEntries] = useState<
 		Array<[string, SchemaLike<Payload, string> | undefined]>
-	>(() => Object.entries(props?.defaultValue ?? [undefined]));
-	const list = entries.map<{ key: string; props: FieldProps<Payload> }>(
+	>(() => Object.entries(config?.defaultValue ?? [undefined]));
+	const list = entries.map<{ key: string; config: FieldConfig<Payload> }>(
 		([key, defaultValue], index) => ({
 			key: `${key}`,
-			props: {
-				...props,
-				name: props?.name ? `${props.name}[${index}]` : '',
-				defaultValue: defaultValue ?? props?.defaultValue?.[index],
-				error: props?.error?.[index],
+			config: {
+				...config,
+				name: config?.name ? `${config.name}[${index}]` : '',
+				defaultValue: defaultValue ?? config?.defaultValue?.[index],
+				error: config?.error?.[index],
 			},
 		}),
 	);
 	const control: ListControl<Payload> = {
 		prepend(defaultValue) {
-			const [name, value] = props?.name
-				? serializeListCommand(props.name, {
+			const [name, value] = config?.name
+				? serializeListCommand(config.name, {
 						type: 'prepend',
 						defaultValue,
 				  })
@@ -372,7 +370,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
-				form: props?.form,
+				form: config?.form,
 				formNoValidate: true,
 				onClick(event) {
 					setEntries((entries) =>
@@ -386,8 +384,8 @@ export function useListControl<Payload = any>(
 			};
 		},
 		append(defaultValue) {
-			const [name, value] = props?.name
-				? serializeListCommand(props.name, {
+			const [name, value] = config?.name
+				? serializeListCommand(config.name, {
 						type: 'append',
 						defaultValue,
 				  })
@@ -396,7 +394,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
-				form: props?.form,
+				form: config?.form,
 				formNoValidate: true,
 				onClick(event) {
 					setEntries((entries) =>
@@ -410,8 +408,8 @@ export function useListControl<Payload = any>(
 			};
 		},
 		replace(index, defaultValue) {
-			const [name, value] = props?.name
-				? serializeListCommand(props.name, {
+			const [name, value] = config?.name
+				? serializeListCommand(config.name, {
 						type: 'replace',
 						index,
 						defaultValue,
@@ -421,7 +419,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
-				form: props?.form,
+				form: config?.form,
 				formNoValidate: true,
 				onClick(event) {
 					setEntries((entries) =>
@@ -436,8 +434,8 @@ export function useListControl<Payload = any>(
 			};
 		},
 		remove(index) {
-			const [name, value] = props?.name
-				? serializeListCommand(props.name, {
+			const [name, value] = config?.name
+				? serializeListCommand(config.name, {
 						type: 'remove',
 						index,
 				  })
@@ -446,7 +444,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
-				form: props?.form,
+				form: config?.form,
 				formNoValidate: true,
 				onClick(event) {
 					setEntries((entries) =>
@@ -460,8 +458,8 @@ export function useListControl<Payload = any>(
 			};
 		},
 		reorder(fromIndex, toIndex) {
-			const [name, value] = props?.name
-				? serializeListCommand(props.name, {
+			const [name, value] = config?.name
+				? serializeListCommand(config.name, {
 						type: 'reorder',
 						from: fromIndex,
 						to: toIndex,
@@ -471,7 +469,7 @@ export function useListControl<Payload = any>(
 			return {
 				name,
 				value,
-				form: props?.form,
+				form: config?.form,
 				formNoValidate: true,
 				onClick(event) {
 					if (fromIndex !== toIndex) {
@@ -491,7 +489,7 @@ export function useListControl<Payload = any>(
 	};
 
 	useEffect(() => {
-		setEntries(Object.entries(props?.defaultValue ?? [undefined]));
+		setEntries(Object.entries(config?.defaultValue ?? [undefined]));
 
 		const resetHandler = (event: Event) => {
 			const form = getForm(ref);
@@ -500,7 +498,7 @@ export function useListControl<Payload = any>(
 				return;
 			}
 
-			setEntries(Object.entries(props?.defaultValue ?? []));
+			setEntries(Object.entries(config?.defaultValue ?? []));
 		};
 
 		document.addEventListener('reset', resetHandler);
@@ -508,7 +506,7 @@ export function useListControl<Payload = any>(
 		return () => {
 			document.removeEventListener('reset', resetHandler);
 		};
-	}, [ref, props?.defaultValue]);
+	}, [ref, config?.defaultValue]);
 
 	return [list, control];
 }
@@ -526,7 +524,7 @@ interface InputControl {
 
 export function useInputControl<
 	Schema extends string | number | Date | undefined,
->(field?: FieldProps<Schema>): [InputProps, InputControl] {
+>(field?: FieldConfig<Schema>): [InputProps, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
 	const [value, setValue] = useState<string>(field?.defaultValue ?? '');
 	const handleChange: InputControl['onChange'] = (eventOrvalue) => {

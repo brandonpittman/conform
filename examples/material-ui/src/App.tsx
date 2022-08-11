@@ -2,7 +2,7 @@ import { useForm, useFieldset, useInputControl } from '@conform-to/react';
 import { TextField, Button, MenuItem, Stack } from '@mui/material';
 
 export default function ArticleForm() {
-	const formProps = useForm({
+	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -13,7 +13,7 @@ export default function ArticleForm() {
 			console.log(data);
 		},
 	});
-	const { title, category, content } = useFieldset(formProps.ref);
+	const { title, category, content } = useFieldset(formConfig.ref);
 
 	/**
 	 * MUI Select is a controlled component and behaves very different from native input/select.
@@ -28,7 +28,7 @@ export default function ArticleForm() {
 	const [inputProps, control] = useInputControl(category);
 
 	return (
-		<form {...formProps}>
+		<form {...formConfig}>
 			<Stack spacing={3}>
 				<TextField
 					label="title"

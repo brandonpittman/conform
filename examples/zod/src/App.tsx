@@ -20,7 +20,7 @@ const schema = z
 	});
 
 export default function SignupForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		validate: resolve(schema),
 		onSubmit(event) {
 			event.preventDefault();
@@ -31,10 +31,10 @@ export default function SignupForm() {
 			console.log({ data });
 		},
 	});
-	const fieldset = useFieldset(form.ref);
+	const fieldset = useFieldset<z.infer<typeof schema>>(formConfig.ref);
 
 	return (
-		<form {...form}>
+		<form {...formConfig}>
 			<label>
 				<div>Email</div>
 				<input type="email" name="email" />

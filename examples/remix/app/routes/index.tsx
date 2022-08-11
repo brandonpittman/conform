@@ -1,5 +1,5 @@
 import {
-	type FieldProps,
+	type FieldConfig,
 	useForm,
 	useFieldset,
 	useListControl,
@@ -33,18 +33,18 @@ export let action = async ({ request }: ActionArgs) => {
 
 export default function OrderForm() {
 	const formState = useActionData<typeof action>();
-	const formProps = useForm({
+	const formConfig = useForm({
 		initialReport: 'onBlur',
 		validate: resolve(Todo),
 	});
-	const { title, tasks } = useFieldset<z.infer<typeof Todo>>(formProps.ref, {
+	const { title, tasks } = useFieldset<z.infer<typeof Todo>>(formConfig.ref, {
 		defaultValue: formState?.value,
 		error: formState?.error,
 	});
-	const [taskList, control] = useListControl(formProps.ref, tasks);
+	const [taskList, control] = useListControl(formConfig.ref, tasks);
 
 	return (
-		<Form method="post" {...formProps}>
+		<Form method="post" {...formConfig}>
 			<fieldset>
 				<label>
 					<div>Title</div>
@@ -58,7 +58,7 @@ export default function OrderForm() {
 				<ul>
 					{taskList.map((task, index) => (
 						<li key={task.key}>
-							<TaskFieldset title={`Task #${index + 1}`} {...task.props} />
+							<TaskFieldset title={`Task #${index + 1}`} {...task.config} />
 							<button {...control.remove(index)}>Delete</button>
 							<button {...control.reorder(index, 0)}>Move to top</button>
 							<button {...control.replace(index, { content: '' })}>
@@ -79,7 +79,7 @@ export default function OrderForm() {
 function TaskFieldset({
 	title,
 	...config
-}: FieldProps<z.infer<typeof Task>> & { title: string }) {
+}: FieldConfig<z.infer<typeof Task>> & { title: string }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { content, completed } = useFieldset<z.infer<typeof Task>>(ref, config);
 

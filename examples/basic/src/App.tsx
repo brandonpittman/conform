@@ -1,7 +1,7 @@
 import { useForm, useFieldset } from '@conform-to/react';
 
 export default function LoginForm() {
-	const form = useForm({
+	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
 			event.preventDefault();
@@ -12,10 +12,10 @@ export default function LoginForm() {
 			console.log(data);
 		},
 	});
-	const { email, password } = useFieldset(form.ref);
+	const { email, password } = useFieldset(formConfig.ref);
 
 	return (
-		<form {...form}>
+		<form {...formConfig}>
 			<label>
 				<div>Email</div>
 				<input type="email" name="email" required />
