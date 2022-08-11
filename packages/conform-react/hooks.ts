@@ -7,7 +7,7 @@ import {
 	serializeListCommand,
 	applyListCommand,
 } from '@conform-to/dom';
-import {
+import React, {
 	type ButtonHTMLAttributes,
 	type ChangeEvent,
 	type FormHTMLAttributes,
@@ -317,22 +317,23 @@ export function useFieldset<Schema extends Record<string, any>>(
 	) as { [Key in keyof Schema]-?: FieldProps<Schema[Key]> };
 }
 
+interface ControlButtonProps {
+	name?: string;
+	value?: string;
+	form?: string;
+	formNoValidate: true;
+	onClick(event?: React.MouseEvent<HTMLButtonElement>): void;
+}
+
 interface ListControl<Schema> {
-	prepend(
-		defaultValue?: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
-	append(
-		defaultValue?: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
+	prepend(defaultValue?: SchemaLike<Schema, string>): ControlButtonProps;
+	append(defaultValue?: SchemaLike<Schema, string>): ControlButtonProps;
 	replace(
 		index: number,
 		defaultValue: SchemaLike<Schema, string>,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
-	remove(index: number): ButtonHTMLAttributes<HTMLButtonElement>;
-	reorder(
-		fromIndex: number,
-		toIndex: number,
-	): ButtonHTMLAttributes<HTMLButtonElement>;
+	): ControlButtonProps;
+	remove(index: number): ControlButtonProps;
+	reorder(fromIndex: number, toIndex: number): ControlButtonProps;
 }
 
 export function useListControl<Payload = any>(
@@ -373,14 +374,14 @@ export function useListControl<Payload = any>(
 				value,
 				form: props?.form,
 				formNoValidate: true,
-				onClick(e) {
+				onClick(event) {
 					setEntries((entries) =>
 						applyListCommand([...entries], {
 							type: 'prepend',
 							defaultValue: [`${Date.now()}`, defaultValue],
 						}),
 					);
-					e.preventDefault();
+					event?.preventDefault();
 				},
 			};
 		},
@@ -397,14 +398,14 @@ export function useListControl<Payload = any>(
 				value,
 				form: props?.form,
 				formNoValidate: true,
-				onClick(e) {
+				onClick(event) {
 					setEntries((entries) =>
 						applyListCommand([...entries], {
 							type: 'append',
 							defaultValue: [`${Date.now()}`, defaultValue],
 						}),
 					);
-					e.preventDefault();
+					event?.preventDefault();
 				},
 			};
 		},
@@ -422,7 +423,7 @@ export function useListControl<Payload = any>(
 				value,
 				form: props?.form,
 				formNoValidate: true,
-				onClick(e) {
+				onClick(event) {
 					setEntries((entries) =>
 						applyListCommand([...entries], {
 							type: 'replace',
@@ -430,7 +431,7 @@ export function useListControl<Payload = any>(
 							index,
 						}),
 					);
-					e.preventDefault();
+					event?.preventDefault();
 				},
 			};
 		},
@@ -447,14 +448,14 @@ export function useListControl<Payload = any>(
 				value,
 				form: props?.form,
 				formNoValidate: true,
-				onClick(e) {
+				onClick(event) {
 					setEntries((entries) =>
 						applyListCommand([...entries], {
 							type: 'remove',
 							index,
 						}),
 					);
-					e.preventDefault();
+					event?.preventDefault();
 				},
 			};
 		},
@@ -472,7 +473,7 @@ export function useListControl<Payload = any>(
 				value,
 				form: props?.form,
 				formNoValidate: true,
-				onClick(e) {
+				onClick(event) {
 					if (fromIndex !== toIndex) {
 						setEntries((entries) =>
 							applyListCommand([...entries], {
@@ -483,7 +484,7 @@ export function useListControl<Payload = any>(
 						);
 					}
 
-					e.preventDefault();
+					event?.preventDefault();
 				},
 			};
 		},
