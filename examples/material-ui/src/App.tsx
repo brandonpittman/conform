@@ -46,8 +46,8 @@ export default function ArticleForm() {
 				<input {...categoryInput} required />
 				<TextField
 					label="Category"
-					value={control.value ?? ''}
-					onChange={(event) => control.onChange(event.target.value)}
+					value={control.value}
+					onChange={control.onChange}
 					onBlur={control.onBlur}
 					error={Boolean(category.error)}
 					helperText={category.error}

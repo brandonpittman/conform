@@ -6,8 +6,7 @@ export type Primitive =
 	| boolean
 	| symbol
 	| bigint
-	| Date
-	| File;
+	| Date;
 
 export type FieldElement =
 	| HTMLInputElement
@@ -22,7 +21,7 @@ export interface FieldConfig<Schema = unknown> extends FieldConstraint {
 	form?: string;
 }
 
-export type FieldValue<Schema> = Schema extends Primitive
+export type FieldValue<Schema> = Schema extends Primitive | File
 	? string
 	: Schema extends Array<infer InnerType>
 	? Array<FieldValue<InnerType>>
@@ -32,7 +31,7 @@ export type FieldValue<Schema> = Schema extends Primitive
 
 export interface FieldError<Schema> {
 	message?: string;
-	details?: Schema extends Primitive
+	details?: Schema extends Primitive | File
 		? never
 		: Schema extends Array<infer InnerType>
 		? Array<FieldError<InnerType>>

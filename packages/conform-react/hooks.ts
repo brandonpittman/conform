@@ -5,6 +5,7 @@ import {
 	type FieldValue,
 	type FieldsetConstraint,
 	type FormValidate,
+	type Primitive,
 	isFieldElement,
 	getKey,
 	serializeListCommand,
@@ -560,42 +561,45 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 	ref: RefObject<HTMLInputElement>;
 }
 
-interface InputControl<Schema> {
-	value?: FieldValue<Schema>;
-	onChange: (value: FieldValue<Schema>) => void;
+interface InputControl {
+	value: string;
+	onChange: (eventOrValue: { target: { value: string } } | string) => void;
 	onBlur: () => void;
 	onInvalid: (event: FormEvent<FieldElement>) => void;
 }
 
-export function useInputControl<Schema>(
+export function useInputControl<Schema extends Primitive = Primitive>(
 	field?: FieldConfig<Schema>,
-): [InputProps, InputControl<Schema>] {
+): [InputProps, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
-	const [value, setValue] = useState<FieldValue<Schema> | undefined>(
-		field?.defaultValue,
-	);
-	const handleChange: InputControl<Schema>['onChange'] = (newValue) => {
+	const [value, setValue] = useState<string>(`${field?.defaultValue ?? ''}`);
+	const handleChange: InputControl['onChange'] = (eventOrValue) => {
 		if (!ref.current) {
 			return;
 		}
 
-		ref.current.value =
-			typeof value === 'object' ? JSON.stringify(value) : `${value ?? ''}`;
+		const newValue =
+			typeof eventOrValue === 'string'
+				? eventOrValue
+				: eventOrValue.target.value;
+
+		ref.current.value = newValue;
 		ref.current.dispatchEvent(new InputEvent('input', { bubbles: true }));
 		setValue(newValue);
 	};
-	const handleBlur: InputControl<Schema>['onBlur'] = () => {
+	const handleBlur: InputControl['onBlur'] = () => {
 		ref.current?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
 	};
-	const handleInvalid: InputControl<Schema>['onInvalid'] = (event) => {
+	const handleInvalid: InputControl['onInvalid'] = (event) => {
 		event.preventDefault();
 	};
+	const inputProps = field ? input(field, { type: 'text' }) : {};
 
 	return [
 		{
 			ref,
 			hidden: true,
-			...(field ? input(field, { type: 'text' }) : {}),
+			...inputProps,
 		},
 		{
 			value,
