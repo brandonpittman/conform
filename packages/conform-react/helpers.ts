@@ -28,7 +28,10 @@ export function input<Schema>(
 		attributes.value = value ?? 'on';
 		attributes.defaultChecked = config.defaultValue === attributes.value;
 	} else {
-		attributes.defaultValue = `${config.defaultValue ?? ''}`;
+		attributes.defaultValue =
+			typeof config.defaultValue === 'object'
+				? JSON.stringify(config.defaultValue)
+				: `${config.defaultValue ?? ''}`;
 	}
 
 	return attributes;

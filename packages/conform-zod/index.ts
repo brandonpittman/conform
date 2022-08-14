@@ -2,6 +2,7 @@ import {
 	type Submission,
 	type FieldError,
 	type FieldConstraint,
+	type FieldsetConstraint,
 	type FormValidate,
 	parse as baseParse,
 	getName,
@@ -80,7 +81,7 @@ export function resolve<Schema extends Record<string, any>>(
 
 export function getConstraint<Schema extends Record<string, any>>(
 	schema: z.ZodType<Schema>,
-): { [Key in keyof Schema]: FieldConstraint } {
+): FieldsetConstraint<Schema> {
 	function getSchemaShape<T extends Record<string, any>>(
 		def: z.ZodType<T>,
 	): z.ZodRawShape | null {

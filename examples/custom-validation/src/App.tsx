@@ -1,8 +1,10 @@
-import { useForm, useFieldset, isFieldElement } from '@conform-to/react';
+import { useForm, useFieldset, parse, isFieldElement } from '@conform-to/react';
 
 export default function SignupForm() {
 	const formConfig = useForm({
 		validate(form) {
+			const formData = new FormData(form);
+
 			for (const field of form.elements) {
 				if (!isFieldElement(field)) {
 					continue;
@@ -32,7 +34,7 @@ export default function SignupForm() {
 					case 'confirm-password': {
 						if (field.validity.valueMissing) {
 							field.setCustomValidity('Confirm Password is required');
-						} else if (field.value !== new FormData(form).get('password')) {
+						} else if (field.value !== formData.get('password')) {
 							field.setCustomValidity('The password does not match');
 						} else {
 							field.setCustomValidity('');
@@ -45,12 +47,16 @@ export default function SignupForm() {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
-			const data = Object.fromEntries(formData);
+			const submission = parse(formData);
 
-			console.log(data);
+			console.log(submission);
 		},
 	});
-	const fieldset = useFieldset(formConfig.ref);
+	const {
+		email,
+		password,
+		'confirm-password': confirmPassword,
+	} = useFieldset(formConfig.ref);
 
 	return (
 		<form {...formConfig}>
@@ -58,17 +64,17 @@ export default function SignupForm() {
 				<label>
 					<div>Email</div>
 					<input type="email" name="email" required />
-					<div>{fieldset.email.error}</div>
+					<div>{email.error}</div>
 				</label>
 				<label>
 					<div>Password</div>
 					<input type="password" name="password" required minLength={10} />
-					<div>{fieldset.password.error}</div>
+					<div>{password.error}</div>
 				</label>
 				<label>
 					<div>Confirm Password</div>
 					<input type="password" name="confirm-password" required />
-					<div>{fieldset['confirm-password'].error}</div>
+					<div>{confirmPassword.error}</div>
 				</label>
 			</fieldset>
 			<div>

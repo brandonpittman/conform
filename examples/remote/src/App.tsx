@@ -1,4 +1,4 @@
-import { useFieldset, useForm } from '@conform-to/react';
+import { useFieldset, useForm, parse } from '@conform-to/react';
 import { useRef } from 'react';
 
 export default function RandomForm() {
@@ -8,9 +8,9 @@ export default function RandomForm() {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
-			const data = Object.fromEntries(formData);
+			const submission = parse(formData);
 
-			console.log({ data });
+			console.log(submission);
 		},
 	});
 

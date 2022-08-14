@@ -26,29 +26,33 @@ export default function SignupForm() {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
-			const data = parse(formData, schema);
+			const submission = parse(formData, schema);
 
-			console.log({ data });
+			console.log(submission);
 		},
 	});
-	const fieldset = useFieldset<z.infer<typeof schema>>(formConfig.ref);
+	const {
+		email,
+		password,
+		'confirm-password': confirmPassword,
+	} = useFieldset<z.infer<typeof schema>>(formConfig.ref);
 
 	return (
 		<form {...formConfig}>
 			<label>
 				<div>Email</div>
 				<input type="email" name="email" />
-				<div>{fieldset.email.error}</div>
+				<div>{email.error}</div>
 			</label>
 			<label>
 				<div>Password</div>
 				<input type="password" name="password" />
-				<div>{fieldset.password.error}</div>
+				<div>{password.error}</div>
 			</label>
 			<label>
 				<div>Confirm Password</div>
 				<input type="password" name="confirm-password" />
-				<div>{fieldset['confirm-password'].error}</div>
+				<div>{confirmPassword.error}</div>
 			</label>
 			<div>
 				<button type="submit">Login</button>

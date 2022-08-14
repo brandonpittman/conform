@@ -1,8 +1,9 @@
 import {
-	type FieldConfig,
+	type FieldsetConfig,
 	useForm,
 	useFieldset,
 	useListControl,
+	conform,
 } from '@conform-to/react';
 import { parse, resolve } from '@conform-to/zod';
 import { type ActionArgs } from '@remix-run/node';
@@ -24,11 +25,11 @@ export let action = async ({ request }: ActionArgs) => {
 	const formData = await request.formData();
 	const submission = parse(formData, Todo);
 
-	if (submission.state === 'accepted') {
-		console.log('Submission', submission.data);
+	if (submission.state !== 'accepted') {
+		return submission.form;
 	}
 
-	return submission.form;
+	console.log('Submission', submission.data);
 };
 
 export default function OrderForm() {
@@ -50,8 +51,7 @@ export default function OrderForm() {
 					<div>Title</div>
 					<input
 						className={title.error ? 'error' : ''}
-						name="title"
-						defaultValue={title.config.defaultValue}
+						{...conform.input(title.config)}
 					/>
 					<div>{title.error}</div>
 				</label>
@@ -82,22 +82,21 @@ export default function OrderForm() {
 	);
 }
 
-function TaskFieldset({
-	title,
-	...config
-}: FieldConfig<z.infer<typeof Task>> & { title: string }) {
+interface TaskFieldsetProps extends FieldsetConfig<z.infer<typeof Task>> {
+	title: string;
+}
+
+function TaskFieldset({ title, ...config }: TaskFieldsetProps) {
 	const ref = useRef<HTMLFieldSetElement>(null);
-	const { content, completed } = useFieldset<z.infer<typeof Task>>(ref, config);
+	const { content, completed } = useFieldset(ref, config);
 
 	return (
 		<fieldset ref={ref}>
 			<label>
 				<div>{title}</div>
 				<input
-					type="text"
 					className={content.error ? 'error' : ''}
-					name={`${config.name}.content`}
-					defaultValue={config.defaultValue?.content}
+					{...conform.input(content.config)}
 				/>
 				<div>{content.error}</div>
 			</label>
@@ -105,11 +104,11 @@ function TaskFieldset({
 				<label>
 					<span>Completed</span>
 					<input
-						type="checkbox"
 						className={completed.error ? 'error' : ''}
-						name={`${config.name}.completed`}
-						value="yes"
-						defaultChecked={config.defaultValue?.completed === 'yes'}
+						{...conform.input(completed.config, {
+							type: 'checkbox',
+							value: 'yes',
+						})}
 					/>
 				</label>
 			</div>

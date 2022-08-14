@@ -52,6 +52,10 @@ export type FieldConstraint = {
 	pattern?: string;
 };
 
+export type FieldsetConstraint<Schema extends Record<string, any>> = {
+	[Key in keyof Schema]?: FieldConstraint;
+};
+
 export interface FormValidate {
 	(form: HTMLFormElement): void;
 }

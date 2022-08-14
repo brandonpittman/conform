@@ -1,9 +1,9 @@
 import {
 	type FieldConfig,
-	type FieldConstraint,
 	type FieldElement,
 	type FieldError,
 	type FieldValue,
+	type FieldsetConstraint,
 	type FormValidate,
 	isFieldElement,
 	getKey,
@@ -11,7 +11,6 @@ import {
 	applyListCommand,
 } from '@conform-to/dom';
 import {
-	type ChangeEvent,
 	type FormHTMLAttributes,
 	type FormEvent,
 	type InputHTMLAttributes,
@@ -206,10 +205,6 @@ export type Fieldset<Schema extends Record<string, any>> = {
 	[Key in keyof Schema]-?: Field<Schema[Key]>;
 };
 
-export type FieldsetConstraint<Schema extends Record<string, any>> = {
-	[Key in keyof Schema]?: FieldConstraint;
-};
-
 export interface FieldsetConfig<Schema extends Record<string, any>> {
 	name?: string;
 	defaultValue?: FieldValue<Schema>;
@@ -220,12 +215,20 @@ export interface FieldsetConfig<Schema extends Record<string, any>> {
 
 export function useFieldset<Schema extends Record<string, any>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config: FieldsetConfig<Schema> = {},
+	config?: FieldsetConfig<Schema>,
+): Fieldset<Schema>;
+export function useFieldset<Schema extends Record<string, any>>(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+	config?: FieldConfig<Schema>,
+): Fieldset<Schema>;
+export function useFieldset<Schema extends Record<string, any>>(
+	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
+	config?: FieldsetConfig<Schema> | FieldConfig<Schema>,
 ): Fieldset<Schema> {
 	const [error, setError] = useState<Record<string, string | undefined>>(() => {
 		const result: Record<string, string> = {};
 
-		for (const [key, error] of Object.entries(config.initialError ?? {})) {
+		for (const [key, error] of Object.entries(config?.initialError ?? {})) {
 			if (error?.message) {
 				result[key] = error.message;
 			}
@@ -248,7 +251,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 
 				for (const field of form.elements) {
 					if (isFieldElement(field)) {
-						const key = getKey(field.name, config.name);
+						const key = getKey(field.name, config?.name);
 
 						if (key) {
 							const prevMessage = next?.[key] ?? '';
@@ -275,7 +278,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 				return;
 			}
 
-			const key = getKey(field.name, config.name);
+			const key = getKey(field.name, config?.name);
 
 			if (key) {
 				setError((prev) => {
@@ -313,13 +316,13 @@ export function useFieldset<Schema extends Record<string, any>>(
 			document.removeEventListener('invalid', invalidHandler, true);
 			document.removeEventListener('reset', resetHandler);
 		};
-	}, [ref, config.name]);
+	}, [ref, config?.name]);
 
 	useEffect(() => {
 		setError((prev) => {
 			let next = prev;
 
-			for (const [key, error] of Object.entries(config.initialError ?? {})) {
+			for (const [key, error] of Object.entries(config?.initialError ?? {})) {
 				if (next[key] !== error?.message) {
 					next = {
 						...next,
@@ -330,7 +333,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 
 			return next;
 		});
-	}, [config.name, config.initialError]);
+	}, [config?.name, config?.initialError]);
 
 	return new Proxy(
 		{},
@@ -340,13 +343,15 @@ export function useFieldset<Schema extends Record<string, any>>(
 					return;
 				}
 
-				const constraint = config.constraint?.[key];
+				const constraint = (config as FieldsetConfig<Schema>)?.constraint?.[
+					key
+				];
 				const field: Field<unknown> = {
 					config: {
-						name: config.name ? `${config.name}.${key}` : key,
-						form: config.form,
-						defaultValue: config.defaultValue?.[key],
-						initialError: config.initialError?.[key]?.details,
+						name: config?.name ? `${config.name}.${key}` : key,
+						form: config?.form,
+						defaultValue: config?.defaultValue?.[key],
+						initialError: config?.initialError?.[key]?.details,
 						...constraint,
 					},
 					error: error?.[key] ?? '',
@@ -555,36 +560,34 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 	ref: RefObject<HTMLInputElement>;
 }
 
-interface InputControl {
-	value: string;
-	onChange: (eventOrvalue: ChangeEvent<FieldElement> | string) => void;
+interface InputControl<Schema> {
+	value?: FieldValue<Schema>;
+	onChange: (value: FieldValue<Schema>) => void;
 	onBlur: () => void;
 	onInvalid: (event: FormEvent<FieldElement>) => void;
 }
 
-export function useInputControl<
-	Schema extends string | number | Date | undefined,
->(field?: FieldConfig<Schema>): [InputProps, InputControl] {
+export function useInputControl<Schema>(
+	field?: FieldConfig<Schema>,
+): [InputProps, InputControl<Schema>] {
 	const ref = useRef<HTMLInputElement>(null);
-	const [value, setValue] = useState<string>(field?.defaultValue ?? '');
-	const handleChange: InputControl['onChange'] = (eventOrvalue) => {
+	const [value, setValue] = useState<FieldValue<Schema> | undefined>(
+		field?.defaultValue,
+	);
+	const handleChange: InputControl<Schema>['onChange'] = (newValue) => {
 		if (!ref.current) {
 			return;
 		}
 
-		const value =
-			typeof eventOrvalue === 'string'
-				? eventOrvalue
-				: eventOrvalue.target.value;
-
-		ref.current.value = value;
+		ref.current.value =
+			typeof value === 'object' ? JSON.stringify(value) : `${value ?? ''}`;
 		ref.current.dispatchEvent(new InputEvent('input', { bubbles: true }));
-		setValue(value);
+		setValue(newValue);
 	};
-	const handleBlur: InputControl['onBlur'] = () => {
+	const handleBlur: InputControl<Schema>['onBlur'] = () => {
 		ref.current?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
 	};
-	const handleInvalid: InputControl['onInvalid'] = (event) => {
+	const handleInvalid: InputControl<Schema>['onInvalid'] = (event) => {
 		event.preventDefault();
 	};
 

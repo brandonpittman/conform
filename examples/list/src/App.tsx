@@ -43,10 +43,7 @@ export default function TodoForm() {
 				<ul>
 					{taskList.map((task, index) => (
 						<li key={task.key}>
-							<TaskFieldset
-								title={`Task #${index + 1}`}
-								name={task.config.name}
-							/>
+							<TaskFieldset title={`Task #${index + 1}`} {...task.config} />
 							<button {...control.remove(index)}>Delete</button>
 							<button {...control.reorder(index, 0)}>Move to top</button>
 							<button {...control.replace(index, { content: '' })}>
@@ -64,12 +61,13 @@ export default function TodoForm() {
 	);
 }
 
-export function TaskFieldset({
-	title,
-	name,
-}: FieldsetConfig<Task> & { title: string }) {
+interface TaskFieldsetProps extends FieldsetConfig<Task> {
+	title: string;
+}
+
+export function TaskFieldset({ title, ...config }: TaskFieldsetProps) {
 	const ref = useRef<HTMLFieldSetElement>(null);
-	const { content, completed } = useFieldset<Task>(ref, { name });
+	const { content, completed } = useFieldset(ref, config);
 
 	return (
 		<fieldset ref={ref}>

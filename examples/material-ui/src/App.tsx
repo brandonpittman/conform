@@ -1,5 +1,16 @@
-import { useForm, useFieldset, useInputControl } from '@conform-to/react';
+import {
+	useForm,
+	useFieldset,
+	useInputControl,
+	parse,
+} from '@conform-to/react';
 import { TextField, Button, MenuItem, Stack } from '@mui/material';
+
+interface Article {
+	title: string;
+	category: string;
+	content: string;
+}
 
 export default function ArticleForm() {
 	const formConfig = useForm({
@@ -8,24 +19,19 @@ export default function ArticleForm() {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
-			const data = Object.fromEntries(formData);
+			const submission = parse(formData);
 
-			console.log(data);
+			console.log(submission);
 		},
 	});
-	const { title, category, content } = useFieldset(formConfig.ref);
+	const { title, category, content } = useFieldset<Article>(formConfig.ref);
 
 	/**
 	 * MUI Select is a controlled component and behaves very different from native input/select.
-	 * For example, the onChange handler is called before the value is updated, result in early
-	 * revalidation. The event provided is also a click event from the li element instead of a
-	 * change event from the input element, making it less straight-forward to check the validity
-	 * of the field.
-	 *
-	 * This hook help you setting up a shadow input that would be used to validate against the schema instead and
-	 * let you hook it up with the controlled component life cycle
+	 * This hook help you setting up a shadow input that would be used to validate against the
+	 * schema instead and let you hook it up with the controlled component life cycle
 	 */
-	const [inputProps, control] = useInputControl(category.config);
+	const [categoryInput, control] = useInputControl(category.config);
 
 	return (
 		<form {...formConfig}>
@@ -37,11 +43,11 @@ export default function ArticleForm() {
 					helperText={title.error}
 					required
 				/>
-				<input {...inputProps} required />
+				<input {...categoryInput} required />
 				<TextField
 					label="Category"
-					value={control.value}
-					onChange={control.onChange}
+					value={control.value ?? ''}
+					onChange={(event) => control.onChange(event.target.value)}
 					onBlur={control.onBlur}
 					error={Boolean(category.error)}
 					helperText={category.error}

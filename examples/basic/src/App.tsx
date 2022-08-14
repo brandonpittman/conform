@@ -1,4 +1,4 @@
-import { useForm, useFieldset } from '@conform-to/react';
+import { useForm, useFieldset, parse } from '@conform-to/react';
 
 export default function LoginForm() {
 	const formConfig = useForm({
@@ -7,9 +7,9 @@ export default function LoginForm() {
 			event.preventDefault();
 
 			const formData = new FormData(event.currentTarget);
-			const data = Object.fromEntries(formData);
+			const submission = parse(formData);
 
-			console.log(data);
+			console.log(submission);
 		},
 	});
 	const { email, password } = useFieldset(formConfig.ref);
