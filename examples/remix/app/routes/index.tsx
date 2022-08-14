@@ -17,7 +17,7 @@ const Task = z.object({
 
 const Todo = z.object({
 	title: z.string(),
-	tasks: z.array(Task),
+	tasks: z.array(Task).min(1),
 });
 
 export let action = async ({ request }: ActionArgs) => {
@@ -39,9 +39,9 @@ export default function OrderForm() {
 	});
 	const { title, tasks } = useFieldset<z.infer<typeof Todo>>(formConfig.ref, {
 		defaultValue: formState?.value,
-		error: formState?.error,
+		initialError: formState?.error.details,
 	});
-	const [taskList, control] = useListControl(formConfig.ref, tasks);
+	const [taskList, control] = useListControl(formConfig.ref, tasks.config);
 
 	return (
 		<Form method="post" {...formConfig}>
@@ -51,7 +51,7 @@ export default function OrderForm() {
 					<input
 						className={title.error ? 'error' : ''}
 						name="title"
-						defaultValue={title.defaultValue}
+						defaultValue={title.config.defaultValue}
 					/>
 					<div>{title.error}</div>
 				</label>
@@ -67,6 +67,12 @@ export default function OrderForm() {
 						</li>
 					))}
 				</ul>
+				<button
+					hidden
+					name={tasks.config.name}
+					className={tasks.error ? 'error' : ''}
+				/>
+				<div>{tasks.error}</div>
 				<div>
 					<button {...control.append()}>Add task</button>
 				</div>

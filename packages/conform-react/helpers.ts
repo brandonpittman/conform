@@ -1,11 +1,11 @@
-import { type FieldConfig, type Primitive } from '@conform-to/dom';
+import { type FieldConfig } from '@conform-to/dom';
 import {
 	type InputHTMLAttributes,
 	type SelectHTMLAttributes,
 	type TextareaHTMLAttributes,
 } from 'react';
 
-export function input<Schema extends Primitive>(
+export function input<Schema>(
 	config: FieldConfig<Schema>,
 	{ type, value }: { type?: string; value?: string } = {},
 ): InputHTMLAttributes<HTMLInputElement> {
@@ -14,14 +14,14 @@ export function input<Schema extends Primitive>(
 		type,
 		name: config.name,
 		form: config.form,
-		required: config.constraint?.required,
-		minLength: config.constraint?.minLength,
-		maxLength: config.constraint?.maxLength,
-		min: config.constraint?.min,
-		max: config.constraint?.max,
-		step: config.constraint?.step,
-		pattern: config.constraint?.pattern,
-		multiple: config.constraint?.multiple,
+		required: config.required,
+		minLength: config.minLength,
+		maxLength: config.maxLength,
+		min: config.min,
+		max: config.max,
+		step: config.step,
+		pattern: config.pattern,
+		multiple: config.multiple,
 	};
 
 	if (isCheckboxOrRadio) {
@@ -34,31 +34,31 @@ export function input<Schema extends Primitive>(
 	return attributes;
 }
 
-export function select<Schema extends Primitive | Array<Primitive>>(
+export function select<Schema>(
 	config: FieldConfig<Schema>,
 ): SelectHTMLAttributes<HTMLSelectElement> {
 	return {
 		name: config.name,
 		form: config.form,
-		defaultValue: config.constraint?.multiple
+		defaultValue: config.multiple
 			? Array.isArray(config.defaultValue)
 				? config.defaultValue
 				: []
 			: `${config.defaultValue ?? ''}`,
-		required: config.constraint?.required,
-		multiple: config.constraint?.multiple,
+		required: config.required,
+		multiple: config.multiple,
 	};
 }
 
-export function textarea<Schema extends string | undefined>(
+export function textarea<Schema>(
 	config: FieldConfig<Schema>,
 ): TextareaHTMLAttributes<HTMLTextAreaElement> {
 	return {
 		name: config.name,
 		form: config.form,
 		defaultValue: `${config.defaultValue ?? ''}`,
-		required: config.constraint?.required,
-		minLength: config.constraint?.minLength,
-		maxLength: config.constraint?.maxLength,
+		required: config.required,
+		minLength: config.minLength,
+		maxLength: config.maxLength,
 	};
 }

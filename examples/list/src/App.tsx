@@ -1,5 +1,5 @@
 import {
-	type FieldConfig,
+	type FieldsetConfig,
 	useForm,
 	useFieldset,
 	useListControl,
@@ -30,7 +30,7 @@ export default function TodoForm() {
 		},
 	});
 	const { title, tasks } = useFieldset<Todo>(formConfig.ref);
-	const [taskList, control] = useListControl(formConfig.ref, tasks);
+	const [taskList, control] = useListControl(formConfig.ref, tasks.config);
 
 	return (
 		<form {...formConfig}>
@@ -67,7 +67,7 @@ export default function TodoForm() {
 export function TaskFieldset({
 	title,
 	name,
-}: FieldConfig<Task> & { title: string }) {
+}: FieldsetConfig<Task> & { title: string }) {
 	const ref = useRef<HTMLFieldSetElement>(null);
 	const { content, completed } = useFieldset<Task>(ref, { name });
 
@@ -75,13 +75,13 @@ export function TaskFieldset({
 		<fieldset ref={ref}>
 			<label>
 				<span>{title}</span>
-				<input type="text" name={content.name} required />
+				<input type="text" name={content.config.name} required />
 				<div>{content.error}</div>
 			</label>
 			<div>
 				<label>
 					<span>Completed</span>
-					<input type="checkbox" name={completed.name} value="yes" />
+					<input type="checkbox" name={completed.config.name} value="yes" />
 				</label>
 			</div>
 		</fieldset>

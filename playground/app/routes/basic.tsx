@@ -1,8 +1,5 @@
-import {
-	type FormValidate,
-	type FieldsetConstraint,
-	isFieldElement,
-} from '@conform-to/dom';
+import { type FormValidate, isFieldElement } from '@conform-to/dom';
+import { type FieldsetConstraint } from '@conform-to/react';
 import {
 	type Movie,
 	type LoginForm,

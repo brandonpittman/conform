@@ -1,15 +1,28 @@
 import {
-	type Constraint,
 	type Submission,
-	type SchemaLike,
+	type FieldError,
 	type FieldConstraint,
 	type FormValidate,
 	parse as baseParse,
-	transform,
 	getName,
+	setValue,
 	setFormError,
 } from '@conform-to/dom';
 import * as z from 'zod';
+
+function formatError<Schema>(error: z.ZodError<Schema>): FieldError<Schema> {
+	const result: FieldError<Schema> = {};
+
+	for (const issue of error.errors) {
+		setValue<string>(
+			result,
+			issue.path.flatMap((path) => ['details', path]).concat('message'),
+			(prev) => (prev ? prev : issue.message),
+		);
+	}
+
+	return result;
+}
 
 export function parse<Schema extends Record<string, any>>(
 	payload: FormData | URLSearchParams,
@@ -36,15 +49,10 @@ export function parse<Schema extends Record<string, any>>(
 	} else {
 		return {
 			state: 'rejected',
-			// @ts-expect-error
 			form: {
-				...submission.form,
-				error: {
-					...submission.form.error,
-					...(transform(
-						result.error.errors.map((e) => [getName(e.path), e.message]),
-					) as SchemaLike<Schema, string>),
-				},
+				// @ts-expect-error
+				value: submission.form.value,
+				error: formatError(result.error),
 			},
 		};
 	}
@@ -54,9 +62,9 @@ export function resolve<Schema extends Record<string, any>>(
 	schema: z.ZodType<Schema>,
 ): FormValidate {
 	function validate(form: HTMLFormElement) {
-		const data = new FormData(form);
-		const value = transform(data);
-		const result = schema.safeParse(value);
+		const payload = new FormData(form);
+		const submission = baseParse(payload);
+		const result = schema.safeParse(submission.form.value);
 		const errors = !result.success
 			? result.error.errors.map<[string, string]>((e) => [
 					getName(e.path),
@@ -72,7 +80,7 @@ export function resolve<Schema extends Record<string, any>>(
 
 export function getConstraint<Schema extends Record<string, any>>(
 	schema: z.ZodType<Schema>,
-): FieldConstraint<Schema> {
+): { [Key in keyof Schema]: FieldConstraint } {
 	function getSchemaShape<T extends Record<string, any>>(
 		def: z.ZodType<T>,
 	): z.ZodRawShape | null {
@@ -87,8 +95,8 @@ export function getConstraint<Schema extends Record<string, any>>(
 		return null;
 	}
 
-	function inferConstraint<Schema>(def: z.ZodType<Schema>): Constraint {
-		const constraint: Constraint = {
+	function inferConstraint<Schema>(def: z.ZodType<Schema>): FieldConstraint {
+		const constraint: FieldConstraint = {
 			required: true,
 		};
 
@@ -106,7 +114,6 @@ export function getConstraint<Schema extends Record<string, any>>(
 			};
 		} else if (def instanceof z.ZodArray) {
 			return {
-				...inferConstraint(def.element),
 				multiple: true,
 			};
 		} else if (def instanceof z.ZodString) {

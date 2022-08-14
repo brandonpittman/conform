@@ -6,7 +6,8 @@ export type Primitive =
 	| boolean
 	| symbol
 	| bigint
-	| Date;
+	| Date
+	| File;
 
 export type FieldElement =
 	| HTMLInputElement
@@ -14,20 +15,33 @@ export type FieldElement =
 	| HTMLTextAreaElement
 	| HTMLButtonElement;
 
-export type SchemaLike<Schema, Payload> = Schema extends
-	| string
-	| number
-	| Date
-	| boolean
-	| undefined
-	? Payload
+export interface FieldConfig<Schema = unknown> extends FieldConstraint {
+	name: string;
+	defaultValue?: FieldValue<Schema>;
+	initialError?: FieldError<Schema>['details'];
+	form?: string;
+}
+
+export type FieldValue<Schema> = Schema extends Primitive
+	? string
 	: Schema extends Array<infer InnerType>
-	? Array<SchemaLike<InnerType, Payload>>
+	? Array<FieldValue<InnerType>>
 	: Schema extends Record<string, any>
-	? { [Key in keyof Schema]?: SchemaLike<Schema[Key], Payload> }
+	? { [Key in keyof Schema]?: FieldValue<Schema[Key]> }
 	: unknown;
 
-export type Constraint = {
+export interface FieldError<Schema> {
+	message?: string;
+	details?: Schema extends Primitive
+		? never
+		: Schema extends Array<infer InnerType>
+		? Array<FieldError<InnerType>>
+		: Schema extends Record<string, any>
+		? { [Key in keyof Schema]?: FieldError<Schema[Key]> }
+		: unknown;
+}
+
+export type FieldConstraint = {
 	required?: boolean;
 	minLength?: number;
 	maxLength?: number;
@@ -42,27 +56,9 @@ export interface FormValidate {
 	(form: HTMLFormElement): void;
 }
 
-export interface FieldConfig<Schema = any> {
-	name?: string;
-	defaultValue?: SchemaLike<Schema, string>;
-	error?: SchemaLike<Schema, string>;
-	form?: string;
-	constraint?: FieldConstraint<Schema>;
-}
-
-export type FieldConstraint<Schema> = Schema extends Primitive
-	? Constraint
-	: Schema extends Array<infer InnerType>
-	? FieldConstraint<InnerType>
-	: Schema extends { [Key in string]: any }
-	? {
-			[Key in keyof Schema]?: Constraint;
-	  }
-	: unknown;
-
-export interface FormState<Schema> {
-	value: SchemaLike<Schema, string>;
-	error: SchemaLike<Schema, string>;
+export interface FormState<Schema extends Record<string, any>> {
+	value: FieldValue<Schema>;
+	error: FieldError<Schema>;
 }
 
 export type Submission<Schema extends Record<string, unknown>> =
@@ -161,42 +157,27 @@ export function setFormError(
 	}
 }
 
-export function transform(
-	entries:
-		| Array<[string, FormDataEntryValue]>
-		| Iterable<[string, FormDataEntryValue]>,
-): Record<string, unknown> {
-	const result: any = {};
+export function setValue<T>(
+	target: any,
+	paths: Array<string | number>,
+	valueFn: (prev?: T) => T,
+): void {
+	let length = paths.length;
+	let lastIndex = length - 1;
+	let index = -1;
+	let pointer = target;
 
-	for (let [key, value] of entries) {
-		let paths = getPaths(key);
-		let length = paths.length;
-		let lastIndex = length - 1;
-		let index = -1;
-		let pointer = result;
+	while (pointer != null && ++index < length) {
+		let key = paths[index];
+		let next = paths[index + 1];
+		let newValue =
+			index != lastIndex
+				? pointer[key] ?? (typeof next === 'number' ? [] : {})
+				: valueFn(pointer[key]);
 
-		while (pointer != null && ++index < length) {
-			let key = paths[index];
-			let next = paths[index + 1];
-			let newValue = value;
-
-			if (index != lastIndex) {
-				newValue = pointer[key] ?? (typeof next === 'number' ? [] : {});
-			}
-
-			// if (typeof pointer[key] !== 'undefined') {
-			// 	pointer[key] = Array.isArray(pointer[key])
-			// 		? pointer[key].concat(newValue)
-			// 		: [pointer[key], newValue];
-			// } else {
-			pointer[key] = newValue !== '' ? newValue : undefined;
-			// }
-
-			pointer = pointer[key];
-		}
+		pointer[key] = newValue;
+		pointer = pointer[key];
 	}
-
-	return result;
 }
 
 export function serializeListCommand<Schema>(
@@ -245,10 +226,24 @@ export function parse(
 		payload.delete('__conform__');
 	}
 
-	const value = transform(payload.entries());
+	let value: Record<string, unknown> = {};
 
-	if (command) {
-		try {
+	try {
+		for (let [name, entry] of payload.entries()) {
+			setValue(value, getPaths(name), (prev) => {
+				if (prev) {
+					throw new Error('Entry with the same name is not supported');
+				}
+
+				if (typeof entry !== 'string') {
+					return entry;
+				}
+
+				return entry !== '' ? entry : undefined;
+			});
+		}
+
+		if (command) {
 			if (command instanceof File) {
 				throw new Error(
 					'The __conform__ key is reserved for special command and could not be used for file upload.',
@@ -275,24 +270,23 @@ export function parse(
 				...JSON.parse(json),
 				type: type as any,
 			});
-		} catch (e) {
+
 			return {
-				state: 'rejected',
+				state: 'modified',
 				form: {
 					value,
-					error: {
-						__conform__:
-							e instanceof Error ? e.message : 'Something went wrong',
-					},
+					error: {},
 				},
 			};
 		}
-
+	} catch (e) {
 		return {
-			state: 'modified',
+			state: 'rejected',
 			form: {
 				value,
-				error: {},
+				error: {
+					message: e instanceof Error ? e.message : 'Submission failed',
+				},
 			},
 		};
 	}

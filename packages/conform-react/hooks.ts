@@ -1,8 +1,10 @@
 import {
-	type FieldElement,
 	type FieldConfig,
+	type FieldConstraint,
+	type FieldElement,
+	type FieldError,
+	type FieldValue,
 	type FormValidate,
-	type SchemaLike,
 	isFieldElement,
 	getKey,
 	serializeListCommand,
@@ -21,44 +23,44 @@ import {
 } from 'react';
 import { input } from './helpers';
 
+export interface FormOptions {
+	/**
+	 * Define when the error should be reported initially.
+	 * Support "onSubmit", "onChange", "onBlur".
+	 *
+	 * Default to `onSubmit`
+	 */
+	initialReport?: 'onSubmit' | 'onChange' | 'onBlur';
+
+	/**
+	 * Enable native validation before hydation.
+	 */
+	fallbackNative?: boolean;
+
+	/**
+	 * Allow the form to be submitted regardless of the form validity.
+	 */
+	noValidate?: boolean;
+
+	/**
+	 * A function to be called when the form should be (re)validated.
+	 */
+	validate?: FormValidate;
+
+	/**
+	 * The submit event handler of the form. It will be called
+	 * only when the form is considered valid.
+	 */
+	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
+}
+
 interface FormConfig {
 	ref: RefObject<HTMLFormElement>;
 	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
 	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
-export function useForm(
-	options: {
-		/**
-		 * Define when the error should be reported initially.
-		 * Support "onSubmit", "onChange", "onBlur".
-		 *
-		 * Default to `onSubmit`
-		 */
-		initialReport?: 'onSubmit' | 'onChange' | 'onBlur';
-
-		/**
-		 * Enable native validation before hydation.
-		 */
-		fallbackNative?: boolean;
-
-		/**
-		 * Allow the form to be submitted regardless of the form validity.
-		 */
-		noValidate?: boolean;
-
-		/**
-		 * A function to be called when the form should be (re)validated.
-		 */
-		validate?: FormValidate;
-
-		/**
-		 * The submit event handler of the form. It will be called
-		 * only when the form is considered valid.
-		 */
-		onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
-	} = {},
-): FormConfig {
+export function useForm(options: FormOptions = {}): FormConfig {
 	const { validate } = options;
 
 	const ref = useRef<HTMLFormElement>(null);
@@ -195,20 +197,42 @@ function getForm(
 	return form;
 }
 
-export function useFieldset<Schema = Record<string, string>>(
-	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
+export type Field<Schema> = {
+	config: FieldConfig<Schema>;
+	error?: string;
+};
+
+export type Fieldset<Schema extends Record<string, any>> = {
+	[Key in keyof Schema]-?: Field<Schema[Key]>;
+};
+
+export type FieldsetConstraint<Schema extends Record<string, any>> = {
+	[Key in keyof Schema]?: FieldConstraint;
+};
+
+export interface FieldsetConfig<Schema extends Record<string, any>> {
+	name?: string;
+	defaultValue?: FieldValue<Schema>;
+	initialError?: FieldError<Schema>['details'];
+	constraint?: FieldsetConstraint<Schema>;
+	form?: string;
+}
+
 export function useFieldset<Schema extends Record<string, any>>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config: FieldConfig<Schema>,
-): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
-export function useFieldset<Schema extends Record<string, any>>(
-	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config: FieldConfig<Schema> = {},
-): { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> } {
-	const [errorMessage, setErrorMessage] = useState<
-		SchemaLike<Record<string, any>, string> | undefined
-	>(config.error);
+	config: FieldsetConfig<Schema> = {},
+): Fieldset<Schema> {
+	const [error, setError] = useState<Record<string, string | undefined>>(() => {
+		const result: Record<string, string> = {};
+
+		for (const [key, error] of Object.entries(config.initialError ?? {})) {
+			if (error?.message) {
+				result[key] = error.message;
+			}
+		}
+
+		return result;
+	});
 
 	useEffect(() => {
 		const handleInput = (event: Event) => {
@@ -219,7 +243,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 				return;
 			}
 
-			setErrorMessage((prev) => {
+			setError((prev) => {
 				let next = prev;
 
 				for (const field of form.elements) {
@@ -254,7 +278,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 			const key = getKey(field.name, config.name);
 
 			if (key) {
-				setErrorMessage((prev) => {
+				setError((prev) => {
 					const prevMessage = prev?.[key] ?? '';
 
 					if (prevMessage === field.validationMessage) {
@@ -277,7 +301,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 				return;
 			}
 
-			setErrorMessage({});
+			setError({});
 		};
 
 		document.addEventListener('input', handleInput);
@@ -292,8 +316,21 @@ export function useFieldset<Schema extends Record<string, any>>(
 	}, [ref, config.name]);
 
 	useEffect(() => {
-		setErrorMessage(config.error);
-	}, [config.error]);
+		setError((prev) => {
+			let next = prev;
+
+			for (const [key, error] of Object.entries(config.initialError ?? {})) {
+				if (next[key] !== error?.message) {
+					next = {
+						...next,
+						[key]: error?.message ?? '',
+					};
+				}
+			}
+
+			return next;
+		});
+	}, [config.name, config.initialError]);
 
 	return new Proxy(
 		{},
@@ -303,16 +340,22 @@ export function useFieldset<Schema extends Record<string, any>>(
 					return;
 				}
 
-				return {
-					name: config.name ? `${config.name}.${key}` : key,
-					form: config.form,
-					defaultValue: config.defaultValue?.[key],
-					error: errorMessage?.[key] ?? config.error?.[key],
-					constraint: config.constraint?.[key],
+				const constraint = config.constraint?.[key];
+				const field: Field<unknown> = {
+					config: {
+						name: config.name ? `${config.name}.${key}` : key,
+						form: config.form,
+						defaultValue: config.defaultValue?.[key],
+						initialError: config.initialError?.[key]?.details,
+						...constraint,
+					},
+					error: error?.[key] ?? '',
 				};
+
+				return field;
 			},
 		},
-	) as { [Key in keyof Schema]-?: FieldConfig<Schema[Key]> };
+	) as Fieldset<Schema>;
 }
 
 interface ControlButtonProps {
@@ -324,12 +367,9 @@ interface ControlButtonProps {
 }
 
 interface ListControl<Schema> {
-	prepend(defaultValue?: SchemaLike<Schema, string>): ControlButtonProps;
-	append(defaultValue?: SchemaLike<Schema, string>): ControlButtonProps;
-	replace(
-		index: number,
-		defaultValue: SchemaLike<Schema, string>,
-	): ControlButtonProps;
+	prepend(defaultValue?: FieldValue<Schema>): ControlButtonProps;
+	append(defaultValue?: FieldValue<Schema>): ControlButtonProps;
+	replace(index: number, defaultValue: FieldValue<Schema>): ControlButtonProps;
 	remove(index: number): ControlButtonProps;
 	reorder(fromIndex: number, toIndex: number): ControlButtonProps;
 }
@@ -345,7 +385,7 @@ export function useListControl<Payload = any>(
 	ListControl<Payload>,
 ] {
 	const [entries, setEntries] = useState<
-		Array<[string, SchemaLike<Payload, string> | undefined]>
+		Array<[string, FieldValue<Payload> | undefined]>
 	>(() => Object.entries(config?.defaultValue ?? [undefined]));
 	const list = entries.map<{ key: string; config: FieldConfig<Payload> }>(
 		([key, defaultValue], index) => ({
@@ -354,7 +394,7 @@ export function useListControl<Payload = any>(
 				...config,
 				name: config?.name ? `${config.name}[${index}]` : '',
 				defaultValue: defaultValue ?? config?.defaultValue?.[index],
-				error: config?.error?.[index],
+				initialError: config?.initialError?.[index]?.details,
 			},
 		}),
 	);
@@ -552,7 +592,7 @@ export function useInputControl<
 		{
 			ref,
 			hidden: true,
-			...input(field ?? {}, { type: 'text' }),
+			...(field ? input(field, { type: 'text' }) : {}),
 		},
 		{
 			value,

@@ -21,23 +21,29 @@ export default function PaymentForm() {
 		},
 	});
 	const { account, amount, reference } = useFieldset<Payment>(formConfig.ref);
-	const { currency, value } = useFieldset(formConfig.ref, amount);
+	const { currency, value } = useFieldset(formConfig.ref, amount.config);
 
 	return (
 		<form {...formConfig}>
 			<label>
 				<div>Account Number</div>
-				<input type="text" name={account.name} required />
+				<input type="text" name={account.config.name} required />
 				<div>{account.error}</div>
 			</label>
 			<label>
 				<div>Amount</div>
-				<input type="number" name={value.name} required min={10} step={0.1} />
+				<input
+					type="number"
+					name={value.config.name}
+					required
+					min={10}
+					step={0.1}
+				/>
 				<div>{value.error}</div>
 			</label>
 			<label>
 				<div>Currency</div>
-				<select name={currency.name} required>
+				<select name={currency.config.name} required>
 					<option value="">Please select</option>
 					<option value="USD">USD</option>
 					<option value="EUR">EUR</option>
@@ -47,7 +53,7 @@ export default function PaymentForm() {
 			</label>
 			<label>
 				<div>Reference</div>
-				<textarea name={reference.name} minLength={5} />
+				<textarea name={reference.config.name} minLength={5} />
 				<div>{reference.error}</div>
 			</label>
 			<div>
