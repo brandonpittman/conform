@@ -270,12 +270,14 @@ function BookList() {
           />
 
           {/* To setup a delete button */}
-          <button {...control.remove(index)}>Delete</button>
+          <button {...control.remove({ index })}>Delete</button>
         </div>
       ))}
 
       {/* To setup a button that can append a new row with optional default value */}
-      <button {...control.append({ name: '', isbn: '' })}>add</button>
+      <button {...control.append({ defaultValue: { name: '', isbn: '' } })}>
+        add
+      </button>
     </fieldset>
   );
 }
@@ -300,7 +302,7 @@ function CollectionForm() {
           <BookFieldset {...book.config}>
 
           {/* To setup a delete button */}
-          <button {...control.remove(index)}>Delete</button>
+          <button {...control.remove({ index })}>Delete</button>
         </div>
       ))}
 
@@ -337,19 +339,19 @@ function BookFieldset({ name, form, defaultValue, error }) {
 
 ```tsx
 // To append a new row with optional defaultValue
-<button {...controls.append(defaultValue)}>Append</button>;
+<button {...controls.append({ defaultValue })}>Append</button>;
 
 // To prepend a new row with optional defaultValue
-<button {...controls.prepend(defaultValue)}>Prepend</button>;
+<button {...controls.prepend({ defaultValue })}>Prepend</button>;
 
 // To remove a row by index
-<button {...controls.remove(index)}>Remove</button>;
+<button {...controls.remove({ index })}>Remove</button>;
 
 // To replace a row with another defaultValue
-<button {...controls.replace(index, defaultValue)}>Replace</button>;
+<button {...controls.replace({ index, defaultValue })}>Replace</button>;
 
 // To reorder a particular row to an another index
-<button {...controls.reorder(fromIndex, toIndex)}>Reorder</button>;
+<button {...controls.reorder({ from, to })}>Reorder</button>;
 ```
 
 </details>

@@ -5,9 +5,12 @@ import {
 	type FieldValue,
 	type FieldsetConstraint,
 	type FormValidate,
+	type ListCommand,
 	type Primitive,
+	commandKey,
 	isFieldElement,
 	getKey,
+	parseListCommand,
 	serializeListCommand,
 	applyListCommand,
 } from '@conform-to/dom';
@@ -15,7 +18,6 @@ import {
 	type FormHTMLAttributes,
 	type FormEvent,
 	type InputHTMLAttributes,
-	type MouseEvent,
 	type RefObject,
 	useRef,
 	useState,
@@ -369,20 +371,24 @@ interface ControlButtonProps {
 	value?: string;
 	form?: string;
 	formNoValidate: true;
-	onClick(event?: MouseEvent<HTMLButtonElement>): void;
 }
 
+type CommandPayload<
+	Schema,
+	Type extends ListCommand<FieldValue<Schema>>['type'],
+> = Extract<ListCommand<FieldValue<Schema>>, { type: Type }>['payload'];
+
 interface ListControl<Schema> {
-	prepend(defaultValue?: FieldValue<Schema>): ControlButtonProps;
-	append(defaultValue?: FieldValue<Schema>): ControlButtonProps;
-	replace(index: number, defaultValue: FieldValue<Schema>): ControlButtonProps;
-	remove(index: number): ControlButtonProps;
-	reorder(fromIndex: number, toIndex: number): ControlButtonProps;
+	prepend(payload?: CommandPayload<Schema, 'prepend'>): ControlButtonProps;
+	append(payload?: CommandPayload<Schema, 'append'>): ControlButtonProps;
+	replace(payload: CommandPayload<Schema, 'replace'>): ControlButtonProps;
+	remove(payload: CommandPayload<Schema, 'remove'>): ControlButtonProps;
+	reorder(payload: CommandPayload<Schema, 'reorder'>): ControlButtonProps;
 }
 
 export function useListControl<Payload = any>(
 	ref: RefObject<HTMLFormElement> | RefObject<HTMLFieldSetElement>,
-	config?: FieldConfig<Array<Payload>>,
+	config: FieldConfig<Array<Payload>>,
 ): [
 	Array<{
 		key: string;
@@ -392,151 +398,75 @@ export function useListControl<Payload = any>(
 ] {
 	const [entries, setEntries] = useState<
 		Array<[string, FieldValue<Payload> | undefined]>
-	>(() => Object.entries(config?.defaultValue ?? [undefined]));
+	>(() => Object.entries(config.defaultValue ?? [undefined]));
 	const list = entries.map<{ key: string; config: FieldConfig<Payload> }>(
 		([key, defaultValue], index) => ({
 			key: `${key}`,
 			config: {
 				...config,
-				name: config?.name ? `${config.name}[${index}]` : '',
-				defaultValue: defaultValue ?? config?.defaultValue?.[index],
-				initialError: config?.initialError?.[index]?.details,
+				name: `${config.name}[${index}]`,
+				defaultValue: defaultValue ?? config.defaultValue?.[index],
+				initialError: config.initialError?.[index]?.details,
 			},
 		}),
 	);
-	const control: ListControl<Payload> = {
-		prepend(defaultValue) {
-			const [name, value] = config?.name
-				? serializeListCommand(config.name, {
-						type: 'prepend',
-						defaultValue,
-				  })
-				: [];
-
-			return {
-				name,
-				value,
-				form: config?.form,
-				formNoValidate: true,
-				onClick(event) {
-					setEntries((entries) =>
-						applyListCommand([...entries], {
-							type: 'prepend',
-							defaultValue: [`${Date.now()}`, defaultValue],
-						}),
-					);
-					event?.preventDefault();
-				},
-			};
+	const control = new Proxy(
+		{},
+		{
+			get(_target, type: any) {
+				return (payload: any = {}) => {
+					return {
+						name: commandKey,
+						value: serializeListCommand(config.name, { type, payload }),
+						form: config.form,
+						formNoValidate: true,
+					};
+				};
+			},
 		},
-		append(defaultValue) {
-			const [name, value] = config?.name
-				? serializeListCommand(config.name, {
-						type: 'append',
-						defaultValue,
-				  })
-				: [];
-
-			return {
-				name,
-				value,
-				form: config?.form,
-				formNoValidate: true,
-				onClick(event) {
-					setEntries((entries) =>
-						applyListCommand([...entries], {
-							type: 'append',
-							defaultValue: [`${Date.now()}`, defaultValue],
-						}),
-					);
-					event?.preventDefault();
-				},
-			};
-		},
-		replace(index, defaultValue) {
-			const [name, value] = config?.name
-				? serializeListCommand(config.name, {
-						type: 'replace',
-						index,
-						defaultValue,
-				  })
-				: [];
-
-			return {
-				name,
-				value,
-				form: config?.form,
-				formNoValidate: true,
-				onClick(event) {
-					setEntries((entries) =>
-						applyListCommand([...entries], {
-							type: 'replace',
-							defaultValue: [`${Date.now()}`, defaultValue],
-							index,
-						}),
-					);
-					event?.preventDefault();
-				},
-			};
-		},
-		remove(index) {
-			const [name, value] = config?.name
-				? serializeListCommand(config.name, {
-						type: 'remove',
-						index,
-				  })
-				: [];
-
-			return {
-				name,
-				value,
-				form: config?.form,
-				formNoValidate: true,
-				onClick(event) {
-					setEntries((entries) =>
-						applyListCommand([...entries], {
-							type: 'remove',
-							index,
-						}),
-					);
-					event?.preventDefault();
-				},
-			};
-		},
-		reorder(fromIndex, toIndex) {
-			const [name, value] = config?.name
-				? serializeListCommand(config.name, {
-						type: 'reorder',
-						from: fromIndex,
-						to: toIndex,
-				  })
-				: [];
-
-			return {
-				name,
-				value,
-				form: config?.form,
-				formNoValidate: true,
-				onClick(event) {
-					if (fromIndex !== toIndex) {
-						setEntries((entries) =>
-							applyListCommand([...entries], {
-								type: 'reorder',
-								from: fromIndex,
-								to: toIndex,
-							}),
-						);
-					}
-
-					event?.preventDefault();
-				},
-			};
-		},
-	};
+	) as ListControl<Payload>;
 
 	useEffect(() => {
-		setEntries(Object.entries(config?.defaultValue ?? [undefined]));
+		setEntries(Object.entries(config.defaultValue ?? [undefined]));
 
+		const clickHandler = (event: Event) => {
+			const button = event.target;
+			const form = getForm(ref);
+
+			if (
+				!form ||
+				!(button instanceof HTMLButtonElement) ||
+				button.form !== form ||
+				button.name !== commandKey
+			) {
+				return;
+			}
+
+			const [name, command] = parseListCommand(button.value);
+
+			if (name !== config.name) {
+				return;
+			}
+
+			switch (command.type) {
+				case 'append':
+				case 'prepend':
+				case 'replace':
+					command.payload.defaultValue = [
+						`${Date.now()}`,
+						command.payload.defaultValue,
+					];
+					break;
+			}
+
+			setEntries((entries) =>
+				applyListCommand(
+					[...entries],
+					command as ListCommand<[string, FieldValue<Payload> | undefined]>,
+				),
+			);
+			event.preventDefault();
+		};
 		const resetHandler = (event: Event) => {
 			const form = getForm(ref);
 
@@ -544,15 +474,17 @@ export function useListControl<Payload = any>(
 				return;
 			}
 
-			setEntries(Object.entries(config?.defaultValue ?? []));
+			setEntries(Object.entries(config.defaultValue ?? []));
 		};
 
+		document.addEventListener('click', clickHandler);
 		document.addEventListener('reset', resetHandler);
 
 		return () => {
+			document.removeEventListener('click', clickHandler);
 			document.removeEventListener('reset', resetHandler);
 		};
-	}, [ref, config?.defaultValue]);
+	}, [ref, config.name, config.defaultValue]);
 
 	return [list, control];
 }
@@ -569,10 +501,10 @@ interface InputControl {
 }
 
 export function useInputControl<Schema extends Primitive = Primitive>(
-	field?: FieldConfig<Schema>,
+	field: FieldConfig<Schema>,
 ): [InputProps, InputControl] {
 	const ref = useRef<HTMLInputElement>(null);
-	const [value, setValue] = useState<string>(`${field?.defaultValue ?? ''}`);
+	const [value, setValue] = useState<string>(`${field.defaultValue ?? ''}`);
 	const handleChange: InputControl['onChange'] = (eventOrValue) => {
 		if (!ref.current) {
 			return;
@@ -593,13 +525,12 @@ export function useInputControl<Schema extends Primitive = Primitive>(
 	const handleInvalid: InputControl['onInvalid'] = (event) => {
 		event.preventDefault();
 	};
-	const inputProps = field ? input(field, { type: 'text' }) : {};
 
 	return [
 		{
 			ref,
 			hidden: true,
-			...inputProps,
+			...input(field, { type: 'text' }),
 		},
 		{
 			value,

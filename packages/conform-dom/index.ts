@@ -80,11 +80,11 @@ export type Submission<Schema extends Record<string, unknown>> =
 	  };
 
 export type ListCommand<Schema> =
-	| { type: 'prepend'; defaultValue: Schema }
-	| { type: 'append'; defaultValue: Schema }
-	| { type: 'replace'; defaultValue: Schema; index: number }
-	| { type: 'remove'; index: number }
-	| { type: 'reorder'; from: number; to: number };
+	| { type: 'prepend'; payload: { defaultValue: Schema } }
+	| { type: 'append'; payload: { defaultValue: Schema } }
+	| { type: 'replace'; payload: { defaultValue: Schema; index: number } }
+	| { type: 'remove'; payload: { index: number } }
+	| { type: 'reorder'; payload: { from: number; to: number } };
 
 export function isFieldElement(element: unknown): element is FieldElement {
 	return (
@@ -183,11 +183,21 @@ export function setValue<T>(
 	}
 }
 
+export const commandKey = '__conform__';
+
 export function serializeListCommand<Schema>(
 	name: string,
-	{ type, ...payload }: ListCommand<Schema>,
-): [string, string] {
-	return ['__conform__', [name, type, JSON.stringify(payload)].join('::')];
+	{ type, payload }: ListCommand<Schema>,
+): string {
+	return [name, type, JSON.stringify(payload)].join('::');
+}
+
+export function parseListCommand<Schema>(
+	serialized: string,
+): [string, ListCommand<Schema>] {
+	const [name, type, json] = serialized.split('::');
+
+	return [name, { type: type as any, payload: JSON.parse(json) }];
 }
 
 export function applyListCommand<Type>(
@@ -196,22 +206,26 @@ export function applyListCommand<Type>(
 ): Array<Type> {
 	switch (command.type) {
 		case 'prepend': {
-			list.unshift(command.defaultValue);
+			list.unshift(command.payload.defaultValue);
 			break;
 		}
 		case 'append': {
-			list.push(command.defaultValue);
+			list.push(command.payload.defaultValue);
 			break;
 		}
 		case 'replace': {
-			list.splice(command.index, 1, command.defaultValue);
+			list.splice(command.payload.index, 1, command.payload.defaultValue);
 			break;
 		}
 		case 'remove':
-			list.splice(command.index, 1);
+			list.splice(command.payload.index, 1);
 			break;
 		case 'reorder':
-			list.splice(command.to, 0, ...list.splice(command.from, 1));
+			list.splice(
+				command.payload.to,
+				0,
+				...list.splice(command.payload.from, 1),
+			);
 			break;
 		default:
 			throw new Error('Invalid list command');
@@ -223,10 +237,10 @@ export function applyListCommand<Type>(
 export function parse(
 	payload: FormData | URLSearchParams,
 ): Submission<Record<string, unknown>> {
-	const command = payload.get('__conform__');
+	const command = payload.get(commandKey);
 
 	if (command) {
-		payload.delete('__conform__');
+		payload.delete(commandKey);
 	}
 
 	let value: Record<string, unknown> = {};
@@ -249,11 +263,11 @@ export function parse(
 		if (command) {
 			if (command instanceof File) {
 				throw new Error(
-					'The __conform__ key is reserved for special command and could not be used for file upload.',
+					`The "${commandKey}" key could not be used for file upload`,
 				);
 			}
 
-			const [name, type, json] = command.split('::');
+			const [name, listCommand] = parseListCommand(command);
 
 			let list: any = value;
 
@@ -266,13 +280,10 @@ export function parse(
 			}
 
 			if (!Array.isArray(list)) {
-				throw new Error('');
+				throw new Error('The command can only be applied to a list');
 			}
 
-			applyListCommand(list, {
-				...JSON.parse(json),
-				type: type as any,
-			});
+			applyListCommand(list, listCommand);
 
 			return {
 				state: 'modified',

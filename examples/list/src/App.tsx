@@ -44,9 +44,13 @@ export default function TodoForm() {
 					{taskList.map((task, index) => (
 						<li key={task.key}>
 							<TaskFieldset title={`Task #${index + 1}`} {...task.config} />
-							<button {...control.remove(index)}>Delete</button>
-							<button {...control.reorder(index, 0)}>Move to top</button>
-							<button {...control.replace(index, { content: '' })}>
+							<button {...control.remove({ index })}>Delete</button>
+							<button {...control.reorder({ from: index, to: 0 })}>
+								Move to top
+							</button>
+							<button
+								{...control.replace({ index, defaultValue: { content: '' } })}
+							>
 								Clear
 							</button>
 						</li>

@@ -180,19 +180,19 @@ export function ChecklistFieldset({
 						<div className="flex flex-row gap-2">
 							<button
 								className="rounded-md border p-2 hover:border-black"
-								{...control.remove(index)}
+								{...control.remove({ index })}
 							>
 								Delete
 							</button>
 							<button
 								className="rounded-md border p-2 hover:border-black"
-								{...control.reorder(index, 0)}
+								{...control.reorder({ from: index, to: 0 })}
 							>
 								Move to top
 							</button>
 							<button
 								className="rounded-md border p-2 hover:border-black"
-								{...control.replace(index, { content: '' })}
+								{...control.replace({ index, defaultValue: { content: '' } })}
 							>
 								Clear
 							</button>
