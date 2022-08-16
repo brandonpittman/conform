@@ -56,7 +56,7 @@ export type FieldsetConstraint<Schema extends Record<string, any>> = {
 };
 
 export interface FormValidate {
-	(form: HTMLFormElement): void;
+	(form: HTMLFormElement, submitter?: HTMLElement | null): void;
 }
 
 export interface FormState<Schema extends Record<string, any>> {
@@ -112,6 +112,24 @@ export function getPaths(name?: string): Array<string | number> {
 
 		return [matches[1], Number(matches[2])];
 	});
+}
+
+export function getFormData(
+	form: HTMLFormElement,
+	submitter?: HTMLElement | null,
+): FormData {
+	const payload = new FormData(form);
+
+	if (
+		submitter &&
+		(submitter instanceof HTMLButtonElement ||
+			submitter instanceof HTMLInputElement) &&
+		submitter.name
+	) {
+		payload.append(submitter.name, submitter.value);
+	}
+
+	return payload;
 }
 
 export function getName(paths: Array<string | number>): string {

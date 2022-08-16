@@ -6,6 +6,7 @@ import {
 	type FormValidate,
 	parse as baseParse,
 	getName,
+	getFormData,
 	setValue,
 	setFormError,
 } from '@conform-to/dom';
@@ -62,8 +63,8 @@ export function parse<Schema extends Record<string, any>>(
 export function resolve<Schema extends Record<string, any>>(
 	schema: z.ZodType<Schema>,
 ): FormValidate {
-	function validate(form: HTMLFormElement) {
-		const payload = new FormData(form);
+	const validate: FormValidate = (form, submitter) => {
+		const payload = getFormData(form, submitter);
 		const submission = baseParse(payload);
 		const result = schema.safeParse(submission.form.value);
 		const errors = !result.success
@@ -74,7 +75,7 @@ export function resolve<Schema extends Record<string, any>>(
 			: [];
 
 		setFormError(form, errors);
-	}
+	};
 
 	return validate;
 }

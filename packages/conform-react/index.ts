@@ -6,6 +6,7 @@ export {
 	type FormValidate,
 	type Submission,
 	parse,
+	getFormData,
 	isFieldElement,
 } from '@conform-to/dom';
 export * from './hooks';

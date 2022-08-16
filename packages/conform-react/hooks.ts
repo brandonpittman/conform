@@ -116,7 +116,6 @@ export function useForm(options: FormOptions = {}): FormConfig {
 				return;
 			}
 
-			validate?.(form);
 			field.dataset.conformTouched = 'true';
 			field.reportValidity();
 		};
@@ -153,12 +152,12 @@ export function useForm(options: FormOptions = {}): FormConfig {
 		ref,
 		noValidate,
 		onSubmit(event) {
-			if (!options.noValidate) {
-				const form = event.currentTarget;
-				const nativeEvent = event.nativeEvent as SubmitEvent;
+			const form = event.currentTarget;
+			const nativeEvent = event.nativeEvent as SubmitEvent;
 
-				validate?.(form);
+			validate?.(form, nativeEvent.submitter);
 
+			if (!options.noValidate && !event.defaultPrevented) {
 				for (const field of form.elements) {
 					if (isFieldElement(field)) {
 						field.dataset.conformTouched = 'true';
@@ -241,14 +240,7 @@ export function useFieldset<Schema extends Record<string, any>>(
 	});
 
 	useEffect(() => {
-		const handleInput = (event: Event) => {
-			const form = getForm(ref);
-			const field = event.target;
-
-			if (!form || !isFieldElement(field) || field.form !== form) {
-				return;
-			}
-
+		const resetError = (form: HTMLFormElement) => {
 			setError((prev) => {
 				let next = prev;
 
@@ -272,6 +264,16 @@ export function useFieldset<Schema extends Record<string, any>>(
 
 				return next;
 			});
+		};
+		const handleInput = (event: Event) => {
+			const form = getForm(ref);
+			const field = event.target;
+
+			if (!form || !isFieldElement(field) || field.form !== form) {
+				return;
+			}
+
+			resetError(form);
 		};
 		const invalidHandler = (event: Event) => {
 			const form = getForm(ref);
@@ -300,6 +302,15 @@ export function useFieldset<Schema extends Record<string, any>>(
 				event.preventDefault();
 			}
 		};
+		const submitHandler = (event: SubmitEvent) => {
+			const form = getForm(ref);
+
+			if (!form || event.target !== form) {
+				return;
+			}
+
+			resetError(form);
+		};
 		const resetHandler = (event: Event) => {
 			const form = getForm(ref);
 
@@ -312,11 +323,13 @@ export function useFieldset<Schema extends Record<string, any>>(
 
 		document.addEventListener('input', handleInput);
 		document.addEventListener('invalid', invalidHandler, true);
+		document.addEventListener('submit', submitHandler);
 		document.addEventListener('reset', resetHandler);
 
 		return () => {
 			document.removeEventListener('input', handleInput);
 			document.removeEventListener('invalid', invalidHandler, true);
+			document.removeEventListener('submit', submitHandler);
 			document.removeEventListener('reset', resetHandler);
 		};
 	}, [ref, config?.name]);
@@ -429,20 +442,19 @@ export function useListControl<Payload = any>(
 	useEffect(() => {
 		setEntries(Object.entries(config.defaultValue ?? [undefined]));
 
-		const clickHandler = (event: Event) => {
-			const button = event.target;
+		const submitHandler = (event: SubmitEvent) => {
 			const form = getForm(ref);
 
 			if (
 				!form ||
-				!(button instanceof HTMLButtonElement) ||
-				button.form !== form ||
-				button.name !== commandKey
+				event.target !== form ||
+				!(event.submitter instanceof HTMLButtonElement) ||
+				event.submitter.name !== commandKey
 			) {
 				return;
 			}
 
-			const [name, command] = parseListCommand(button.value);
+			const [name, command] = parseListCommand(event.submitter.value);
 
 			if (name !== config.name) {
 				return;
@@ -477,11 +489,11 @@ export function useListControl<Payload = any>(
 			setEntries(Object.entries(config.defaultValue ?? []));
 		};
 
-		document.addEventListener('click', clickHandler);
+		document.addEventListener('submit', submitHandler, true);
 		document.addEventListener('reset', resetHandler);
 
 		return () => {
-			document.removeEventListener('click', clickHandler);
+			document.removeEventListener('submit', submitHandler, true);
 			document.removeEventListener('reset', resetHandler);
 		};
 	}, [ref, config.name, config.defaultValue]);
