@@ -1,4 +1,4 @@
-import { useFieldset, useForm } from '@conform-to/react';
+import { useFieldset, useForm, createRequest } from '@conform-to/react';
 import { resolve, parse } from '@conform-to/zod';
 import { z } from 'zod';
 
@@ -22,11 +22,9 @@ const schema = z
 export default function SignupForm() {
 	const formConfig = useForm({
 		validate: resolve(schema),
-		onSubmit(event) {
-			event.preventDefault();
-
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData, schema);
+		onSubmit: async (event) => {
+			const request = createRequest(event);
+			const submission = await parse(request, schema);
 
 			console.log(submission);
 		},

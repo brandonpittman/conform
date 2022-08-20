@@ -3,7 +3,7 @@ import {
 	useForm,
 	useFieldset,
 	useListControl,
-	parse,
+	createRequest,
 } from '@conform-to/react';
 import { useRef } from 'react';
 
@@ -20,13 +20,10 @@ interface Todo {
 export default function TodoForm() {
 	const formConfig = useForm({
 		initialReport: 'onBlur',
-		onSubmit: (event) => {
-			event.preventDefault();
+		onSubmit: async (event) => {
+			const request = createRequest(event);
 
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
-
-			console.log(submission);
+			console.log(request);
 		},
 	});
 	const { title, tasks } = useFieldset<Todo>(formConfig.ref);

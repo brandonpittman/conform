@@ -2,7 +2,7 @@ import {
 	useForm,
 	useFieldset,
 	useInputControl,
-	parse,
+	createRequest,
 } from '@conform-to/react';
 import { TextField, Button, MenuItem, Stack } from '@mui/material';
 
@@ -16,12 +16,9 @@ export default function ArticleForm() {
 	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
-			event.preventDefault();
+			const request = createRequest(event);
 
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
-
-			console.log(submission);
+			console.log(request);
 		},
 	});
 	const { title, category, content } = useFieldset<Article>(formConfig.ref);

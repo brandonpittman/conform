@@ -25,7 +25,7 @@ import {
 } from 'react';
 import { input } from './helpers';
 
-export interface FormOptions {
+export interface FormConfig {
 	/**
 	 * Define when the error should be reported initially.
 	 * Support "onSubmit", "onChange", "onBlur".
@@ -56,18 +56,18 @@ export interface FormOptions {
 	onSubmit?: FormHTMLAttributes<HTMLFormElement>['onSubmit'];
 }
 
-interface FormConfig {
+interface FormProps {
 	ref: RefObject<HTMLFormElement>;
 	onSubmit: Required<FormHTMLAttributes<HTMLFormElement>>['onSubmit'];
 	noValidate: Required<FormHTMLAttributes<HTMLFormElement>>['noValidate'];
 }
 
-export function useForm(options: FormOptions = {}): FormConfig {
-	const { validate } = options;
+export function useForm(config: FormConfig = {}): FormProps {
+	const { validate } = config;
 
 	const ref = useRef<HTMLFormElement>(null);
 	const [noValidate, setNoValidate] = useState(
-		options.noValidate || !options.fallbackNative,
+		config.noValidate || !config.fallbackNative,
 	);
 
 	useEffect(() => {
@@ -75,7 +75,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 	}, []);
 
 	useEffect(() => {
-		if (options.noValidate) {
+		if (config.noValidate) {
 			return;
 		}
 
@@ -93,7 +93,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 
 			validate?.(form);
 
-			if (options.initialReport === 'onChange') {
+			if (config.initialReport === 'onChange') {
 				field.dataset.conformTouched = 'true';
 			}
 
@@ -111,7 +111,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 				!form ||
 				!isFieldElement(field) ||
 				field.form !== form ||
-				options.initialReport !== 'onBlur'
+				config.initialReport !== 'onBlur'
 			) {
 				return;
 			}
@@ -146,7 +146,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 			document.removeEventListener('focusout', handleFocusout);
 			document.removeEventListener('reset', handleReset);
 		};
-	}, [validate, options.initialReport, options.noValidate]);
+	}, [validate, config.initialReport, config.noValidate]);
 
 	return {
 		ref,
@@ -157,7 +157,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 
 			validate?.(form, nativeEvent.submitter);
 
-			if (!options.noValidate && !event.defaultPrevented) {
+			if (!config.noValidate && !event.defaultPrevented) {
 				for (const field of form.elements) {
 					if (isFieldElement(field)) {
 						field.dataset.conformTouched = 'true';
@@ -179,7 +179,7 @@ export function useForm(options: FormOptions = {}): FormConfig {
 				}
 			}
 
-			options.onSubmit?.(event);
+			config.onSubmit?.(event);
 		},
 	};
 }

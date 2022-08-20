@@ -1,55 +1,50 @@
-import { useForm, useFieldset, parse, isFieldElement } from '@conform-to/react';
+import {
+	useForm,
+	useFieldset,
+	createRequest,
+	createValidate,
+} from '@conform-to/react';
 
 export default function SignupForm() {
 	const formConfig = useForm({
-		validate(form) {
-			const formData = new FormData(form);
-
-			for (const field of form.elements) {
-				if (!isFieldElement(field)) {
-					continue;
-				}
-
-				switch (field.name) {
-					case 'email':
-						if (field.validity.valueMissing) {
-							field.setCustomValidity('Email is required');
-						} else if (field.validity.typeMismatch) {
-							field.setCustomValidity('Please enter a valid email');
-						} else {
-							field.setCustomValidity('');
-						}
-						break;
-					case 'password':
-						if (field.validity.valueMissing) {
-							field.setCustomValidity('Password is required');
-						} else if (field.validity.tooShort) {
-							field.setCustomValidity(
-								'The password should be at least 10 characters long',
-							);
-						} else {
-							field.setCustomValidity('');
-						}
-						break;
-					case 'confirm-password': {
-						if (field.validity.valueMissing) {
-							field.setCustomValidity('Confirm Password is required');
-						} else if (field.value !== formData.get('password')) {
-							field.setCustomValidity('The password does not match');
-						} else {
-							field.setCustomValidity('');
-						}
+		validate: createValidate((field, formData) => {
+			switch (field.name) {
+				case 'email':
+					if (field.validity.valueMissing) {
+						field.setCustomValidity('Email is required');
+					} else if (field.validity.typeMismatch) {
+						field.setCustomValidity('Please enter a valid email');
+					} else {
+						field.setCustomValidity('');
 					}
+					break;
+				case 'password':
+					if (field.validity.valueMissing) {
+						field.setCustomValidity('Password is required');
+					} else if (field.validity.tooShort) {
+						field.setCustomValidity(
+							'The password should be at least 10 characters long',
+						);
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
+				case 'confirm-password': {
+					if (field.validity.valueMissing) {
+						field.setCustomValidity('Confirm Password is required');
+					} else if (field.value !== formData.get('password')) {
+						field.setCustomValidity('The password does not match');
+					} else {
+						field.setCustomValidity('');
+					}
+					break;
 				}
 			}
-		},
-		onSubmit(event) {
-			event.preventDefault();
+		}),
+		onSubmit: async (event) => {
+			const request = createRequest(event);
 
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
-
-			console.log(submission);
+			console.log(request);
 		},
 	});
 	const {

@@ -22,8 +22,7 @@ const Todo = z.object({
 });
 
 export let action = async ({ request }: ActionArgs) => {
-	const formData = await request.formData();
-	const submission = parse(formData, Todo);
+	const submission = await parse(request, Todo);
 
 	if (submission.state !== 'accepted') {
 		return submission.form;

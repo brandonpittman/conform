@@ -252,7 +252,31 @@ export function applyListCommand<Type>(
 	return list;
 }
 
-export function parse(
+export async function getPayload(
+	request: Request | FormData | URLSearchParams,
+): Promise<FormData | URLSearchParams> {
+	if (request instanceof Request) {
+		if (request.method === 'GET') {
+			return new URL(request.url).searchParams;
+		}
+
+		const contentType = request.headers.get('content-type');
+
+		switch (contentType) {
+			case 'application/x-www-form-urlencoded':
+			case 'multipart/form-data':
+				return await request.formData();
+			default:
+				throw new Error(
+					`Request with content-type ${contentType} is not supported`,
+				);
+		}
+	}
+
+	return request;
+}
+
+export function createSubmission(
 	payload: FormData | URLSearchParams,
 ): Submission<Record<string, unknown>> {
 	const command = payload.get(commandKey);
@@ -330,5 +354,54 @@ export function parse(
 			value,
 			error: {},
 		},
+	};
+}
+
+export async function parse(
+	data: Request | FormData | URLSearchParams,
+): Promise<Submission<Record<string, unknown>>> {
+	const payload = await getPayload(data);
+
+	return createSubmission(payload);
+}
+
+export function createRequest(event: SubmitEvent): Request {
+	const form = event.target as HTMLFormElement;
+	const submitter = event.submitter as
+		| HTMLInputElement
+		| HTMLButtonElement
+		| null;
+	const formData = getFormData(form, submitter);
+	const request = new Request(submitter?.formAction ?? form.action, {
+		headers: {
+			'content-type': submitter?.formEnctype ?? form.enctype,
+		},
+		method: submitter?.formMethod ?? form.method,
+		body: formData,
+	});
+
+	event.preventDefault();
+
+	return request;
+}
+
+export function createValidate(
+	handler: (
+		field:
+			| HTMLInputElement
+			| HTMLSelectElement
+			| HTMLTextAreaElement
+			| HTMLButtonElement,
+		formData: FormData,
+	) => void,
+): FormValidate {
+	return (form, submitter) => {
+		const formData = getFormData(form, submitter);
+
+		for (const field of form.elements) {
+			if (isFieldElement(field)) {
+				handler(field, formData);
+			}
+		}
 	};
 }

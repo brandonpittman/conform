@@ -1,16 +1,13 @@
-import { useFieldset, useForm, parse } from '@conform-to/react';
+import { useFieldset, useForm, createRequest } from '@conform-to/react';
 import { useRef } from 'react';
 
 export default function RandomForm() {
 	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
-			event.preventDefault();
+			const request = createRequest(event);
 
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
-
-			console.log(submission);
+			console.log(request);
 		},
 	});
 

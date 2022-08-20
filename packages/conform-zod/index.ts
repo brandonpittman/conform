@@ -9,6 +9,7 @@ import {
 	getFormData,
 	setValue,
 	setFormError,
+	createSubmission,
 } from '@conform-to/dom';
 import * as z from 'zod';
 
@@ -26,11 +27,11 @@ function formatError<Schema>(error: z.ZodError<Schema>): FieldError<Schema> {
 	return result;
 }
 
-export function parse<Schema extends Record<string, any>>(
-	payload: FormData | URLSearchParams,
+export async function parse<Schema extends Record<string, any>>(
+	data: Request | FormData | URLSearchParams,
 	schema: z.ZodType<Schema>,
-): Submission<Schema> {
-	const submission = baseParse(payload);
+): Promise<Submission<Schema>> {
+	const submission = await baseParse(data);
 	const result = schema.safeParse(submission.form.value);
 
 	if (submission.state === 'modified') {
@@ -65,7 +66,7 @@ export function resolve<Schema extends Record<string, any>>(
 ): FormValidate {
 	const validate: FormValidate = (form, submitter) => {
 		const payload = getFormData(form, submitter);
-		const submission = baseParse(payload);
+		const submission = createSubmission(payload);
 		const result = schema.safeParse(submission.form.value);
 		const errors = !result.success
 			? result.error.errors.map<[string, string]>((e) => [

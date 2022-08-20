@@ -1,4 +1,4 @@
-import { useForm, parse, useFieldset } from '@conform-to/react';
+import { useForm, useFieldset, createRequest, parse } from '@conform-to/react';
 
 interface Payment {
 	account: string;
@@ -11,11 +11,9 @@ interface Payment {
 
 export default function PaymentForm() {
 	const formConfig = useForm({
-		onSubmit(event) {
-			event.preventDefault();
-
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
+		onSubmit: async (event) => {
+			const request = createRequest(event);
+			const submission = await parse(request);
 
 			console.log(submission);
 		},

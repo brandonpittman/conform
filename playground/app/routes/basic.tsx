@@ -1,5 +1,8 @@
-import { type FormValidate, isFieldElement } from '@conform-to/dom';
-import { type FieldsetConstraint } from '@conform-to/react';
+import {
+	type FormValidate,
+	type FieldsetConstraint,
+	createValidate,
+} from '@conform-to/dom';
 import {
 	type Movie,
 	type LoginForm,
@@ -33,46 +36,40 @@ export default function Basic() {
 			step: '0.5',
 		},
 	};
-	const validateMovie: FormValidate = (form) => {
-		for (const field of form.elements) {
-			if (!isFieldElement(field)) {
-				continue;
-			}
-
-			switch (field.name) {
-				case 'title':
-					if (field.validity.valueMissing) {
-						field.setCustomValidity('Title is required');
-					} else if (field.validity.patternMismatch) {
-						field.setCustomValidity('Please enter a valid title');
-					} else {
-						field.setCustomValidity('');
-					}
-					break;
-				case 'description':
-					if (field.validity.tooShort) {
-						field.setCustomValidity('Please provides more details');
-					} else {
-						field.setCustomValidity('');
-					}
-					break;
-				case 'genres':
-					if (field.validity.valueMissing) {
-						field.setCustomValidity('Genre is required');
-					} else {
-						field.setCustomValidity('');
-					}
-					break;
-				case 'rating':
-					if (field.validity.stepMismatch) {
-						field.setCustomValidity('The provided rating is invalid');
-					} else {
-						field.setCustomValidity('');
-					}
-					break;
-			}
+	const validateMovie = createValidate((field) => {
+		switch (field.name) {
+			case 'title':
+				if (field.validity.valueMissing) {
+					field.setCustomValidity('Title is required');
+				} else if (field.validity.patternMismatch) {
+					field.setCustomValidity('Please enter a valid title');
+				} else {
+					field.setCustomValidity('');
+				}
+				break;
+			case 'description':
+				if (field.validity.tooShort) {
+					field.setCustomValidity('Please provides more details');
+				} else {
+					field.setCustomValidity('');
+				}
+				break;
+			case 'genres':
+				if (field.validity.valueMissing) {
+					field.setCustomValidity('Genre is required');
+				} else {
+					field.setCustomValidity('');
+				}
+				break;
+			case 'rating':
+				if (field.validity.stepMismatch) {
+					field.setCustomValidity('The provided rating is invalid');
+				} else {
+					field.setCustomValidity('');
+				}
+				break;
 		}
-	};
+	});
 	const loginConstraint: FieldsetConstraint<LoginForm> = {
 		email: {
 			required: true,

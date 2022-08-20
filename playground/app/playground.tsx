@@ -2,7 +2,7 @@ import { type ActionFunction } from '@remix-run/node';
 import { useActionData, Form as RemixForm } from '@remix-run/react';
 import { parse as baseParse, type Submission } from '@conform-to/dom';
 import { useState, useEffect, type ReactNode } from 'react';
-import { type FormOptions, useForm } from '@conform-to/react';
+import { type FormConfig, useForm } from '@conform-to/react';
 
 export let action: ActionFunction = async ({ request }) => {
 	const formData = await request.formData();
@@ -18,7 +18,7 @@ export let action: ActionFunction = async ({ request }) => {
 	};
 };
 
-interface FormProps extends FormOptions {
+interface FormProps extends FormConfig {
 	id: string;
 	method: 'get' | 'post';
 	children?: ReactNode;
@@ -65,7 +65,7 @@ interface PlaygroundProps {
 	form: string;
 	parse?: (
 		payload: URLSearchParams | FormData,
-	) => Submission<Record<string, unknown>>;
+	) => Promise<Submission<Record<string, unknown>>>;
 	children: ReactNode;
 }
 
@@ -77,23 +77,17 @@ export function Playground({
 	children,
 }: PlaygroundProps) {
 	const actionData = useActionData();
-	const [payload, setPayload] = useState<URLSearchParams | null>(() => {
-		if (actionData && form === actionData.form) {
-			return new URLSearchParams(actionData.entries);
-		}
-
-		return null;
-	});
+	const [submission, setSubmission] = useState<Submission<
+		Record<string, unknown>
+	> | null>(null);
 
 	useEffect(() => {
 		if (!actionData || actionData.form !== form) {
 			return;
 		}
 
-		setPayload(new URLSearchParams(actionData.entries));
-	}, [actionData, form]);
-
-	const submission = payload ? parse(payload) : null;
+		parse(new URLSearchParams(actionData.entries)).then(setSubmission);
+	}, [actionData, parse, form]);
 
 	return (
 		<section
@@ -133,7 +127,7 @@ export function Playground({
 							<button
 								type="submit"
 								className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-								onClick={() => setPayload(null)}
+								onClick={() => setSubmission(null)}
 								form={form}
 							>
 								Submit

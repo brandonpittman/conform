@@ -1,21 +1,18 @@
-import { useForm, useFieldset, parse } from '@conform-to/react';
+import { useForm, useFieldset, createRequest } from '@conform-to/react';
 
 export default function LoginForm() {
 	const formConfig = useForm({
 		initialReport: 'onBlur',
 		onSubmit: (event) => {
-			event.preventDefault();
+			const request = createRequest(event);
 
-			const formData = new FormData(event.currentTarget);
-			const submission = parse(formData);
-
-			console.log(submission);
+			console.log(request);
 		},
 	});
 	const { email, password } = useFieldset(formConfig.ref);
 
 	return (
-		<form {...formConfig}>
+		<form method="post" action="/login" {...formConfig}>
 			<label>
 				<div>Email</div>
 				<input type="email" name="email" required />
